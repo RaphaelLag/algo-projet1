@@ -1,0 +1,5 @@
+#!/bin/sh
+make
+./altex < texte-test-court.txt -m 40
+
+
