@@ -309,7 +309,8 @@ void text_draw_wordline(struct stream *f, int nbwords, char** tabwords, int end_
                 }
         } else {
                 size_t i;
-                for (i=1; i < nbwords; i++) fprintf(f->out, "%s ", tabwords[i]) ;
+		// TODO : correctif à vérifier
+                for (i=0; i < nbwords; i++) fprintf(f->out, "%s ", tabwords[i]) ;
                 fprintf(f->out, "\n\n") ; fflush(f->out);
         }
 }

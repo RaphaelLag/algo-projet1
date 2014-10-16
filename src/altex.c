@@ -17,7 +17,7 @@
  * free the memory allocated to tab
  *
  */
-static void free_tab(char** tab, int tab_len);
+//static void free_tab(char** tab, int tab_len);
 
 /** Optimal alignment of a text (read from input file in) with ligns of fixed length (M units) written on output file (out).
  * @param in: input stream, in ascii (eg in == stdin)
@@ -64,6 +64,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsi
                         tabwords[nbwords] = (char*) calloc(n, sizeof(char));
                         memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
                         nbwords++;
+                        // printf("%s ", buffer) ;
                         /*else { // word of length n 
                           printf("%s ", buffer) ;
                           }*/
@@ -71,14 +72,14 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsi
                 par_len += size_separator * (nbwords - 1);
                 // Case were length of the paragraph is less than M
                 if (par_len < M) { // We write the paragraph in the output
-                        draw_wordline(outformat, nbwords, tabwords, 1);
+			draw_wordline(outformat, nbwords, tabwords, 1);
                 }
                 //      draw_wordline(outformat, nbwords, tabwords, 1);
                 //      on réinitialise les variables nécessaires pour le prochain paragraphe
                 //      + on libère la mémoire
                 par_len = 0;
                 nbwords = 0;
-                free_tab(tabwords, len);
+                //free_tab(tabwords, len);
                 //printf("\n\n ") ;
         }
         free(tabwords);
@@ -196,12 +197,12 @@ int main(int argc, char *argv[] ) {
 /* ************************************************************************** */
 /* *************************** Utility Functions **************************** */
 /* ************************************************************************** */
-
+/*
 static void free_tab(char** tab, int tab_len) {
         int i;
         for (i = 0; i < tab_len; i++) {
                 free(tab[i]);
         }
 }
-
+*/
 
