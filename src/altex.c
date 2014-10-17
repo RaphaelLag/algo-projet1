@@ -72,7 +72,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsi
                 par_len += size_separator * (nbwords - 1);
                 // Case were length of the paragraph is less than M
                 if (par_len < M) { // We write the paragraph in the output
-			draw_wordline(outformat, nbwords, tabwords, 1);
+                        draw_wordline(outformat, nbwords, tabwords, 1);
                 }
                 //      draw_wordline(outformat, nbwords, tabwords, 1);
                 //      on réinitialise les variables nécessaires pour le prochain paragraphe
@@ -121,21 +121,21 @@ int main(int argc, char *argv[] ) {
         while ((c = getopt(argc , argv, "i:o:f:m:")) != -1)
         {
                 switch (c) {
-                        case 'i':
-                                input_file = optarg;
-                                break;
-                        case 'o':
-                                output_file = optarg;
-                                break;
-                        case 'f':
-                                format = optarg;
-                                break;
-                        case 'm':
-                                M = atoi(optarg);
-                                break;
-                        case '?':
-                                usage(argv[0]);
-                                break;
+                case 'i':
+                        input_file = optarg;
+                        break;
+                case 'o':
+                        output_file = optarg;
+                        break;
+                case 'f':
+                        format = optarg;
+                        break;
+                case 'm':
+                        M = atoi(optarg);
+                        break;
+                case '?':
+                        usage(argv[0]);
+                        break;
                 }
         }
 
@@ -169,18 +169,18 @@ int main(int argc, char *argv[] ) {
         else {
                 switch(format[0])
                 {
-                        case 't': //"text"
-                                outstream = init_stream(output_file, 0, M);
-                                break;
-                        case 's': //"serif"
-                                outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
-                                break;
-                        case 'h': //"hand"
-                                outstream = init_stream(output_file, "daniel.ttf", M);
-                                break;
-                        default:
-                                fprintf( stderr, "Unrecognized format.\n");
-                                return 1;
+                case 't': //"text"
+                        outstream = init_stream(output_file, 0, M);
+                        break;
+                case 's': //"serif"
+                        outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
+                        break;
+                case 'h': //"hand"
+                        outstream = init_stream(output_file, "daniel.ttf", M);
+                        break;
+                default:
+                        fprintf( stderr, "Unrecognized format.\n");
+                        return 1;
                 }
         }
 
@@ -198,11 +198,11 @@ int main(int argc, char *argv[] ) {
 /* *************************** Utility Functions **************************** */
 /* ************************************************************************** */
 /*
-static void free_tab(char** tab, int tab_len) {
-        int i;
-        for (i = 0; i < tab_len; i++) {
-                free(tab[i]);
-        }
-}
-*/
+   static void free_tab(char** tab, int tab_len) {
+   int i;
+   for (i = 0; i < tab_len; i++) {
+   free(tab[i]);
+   }
+   }
+   */
 
