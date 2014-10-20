@@ -46,7 +46,7 @@
  * @param return the cost for an optimal alignment for the parapgraph considered 
  */
 static int justify_par(int i, struct stream* outformat, unsigned long M,
-                unsigned N, int nbwords, char** tabwords, long size_separator);
+                unsigned N, int nbwords, char** tabwords, long size_separator, int* penalties_array);
 /**
  * Computes the space size to add in order to make a line composed of the words from the
  * ith word till the nth word have a total size of M.
@@ -97,8 +97,6 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
         int nbwords = 0;
         long par_len = 0;
         long size_separator = sizeSeparator(outformat);
-        //printf("size_separator: %ld",size_separator);
-        printf("len %d", (int)len);
         while (!endofile) { // We read each paragraph from the first one
                 int is_paragraph_end = 0 ;
                 while ( !is_paragraph_end ) { // All words in the paragraph are stored in tabwords, character being stored in buffer..
@@ -107,20 +105,33 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         par_len += wordlength(outformat, buffer);
                         tabwords[nbwords] = (char*) calloc(n, sizeof(char));
                         memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
+                        //printf("%s\n", tabwords[nbwords]);
+                        //fflush(stdout);
                         nbwords++;
                         // printf("%s ", buffer) ;
                         /*else { // word of length n 
                           printf("%s ", buffer) ;
                           }*/
                 }
+                //Array used for the memoization
+                int penalties_array [nbwords][nbwords];
+                int i,j;
+                //The default values of the array when it's not filled
+                for (i = 0; i < nbwords; i++) {
+                        for (j = 0; j < nbwords; j++) {
+                                penalties_array[i][j] = -1;             
+                        }
+                }
                 par_len += size_separator * (nbwords - 1);
                 // Case where length of the paragraph is less than M
                 if (par_len < M) { // We write the paragraph in the output
                         draw_wordline(outformat, nbwords, tabwords, 1);
+                } else {
+                        // else we recursively compute the optimal jusitfication 
+                        printf("nbwords : %d\n",nbwords);
+                        sumval_all_paragraphs += justify_par(0, outformat, M, N, nbwords,
+                                        tabwords, size_separator, (int *)penalties_array);
                 }
-                // else we recursively compute the optimal jusitfication 
-                sumval_all_paragraphs += justify_par(0, outformat, M, N, nbwords,
-                                tabwords, size_separator);
                 //      on réinitialise les variables nécessaires pour le prochain paragraphe
                 //      + on libère la mémoire
                 par_len = 0;
@@ -160,29 +171,29 @@ int main(int argc, char *argv[] ) {
         //Command line parsing
         char c;
 
-        long M = 80 ;
-        char* input_file = "texte-test-court.txt";
+        long M = 40 ;
+        char* input_file = "test.txt";
         char* output_file = 0;
         char* format = 0;
 
         while ((c = getopt(argc , argv, "i:o:f:m:")) != -1)
         {
                 switch (c) {
-                case 'i':
-                        input_file = optarg;
-                        break;
-                case 'o':
-                        output_file = optarg;
-                        break;
-                case 'f':
-                        format = optarg;
-                        break;
-                case 'm':
-                        M = atoi(optarg);
-                        break;
-                case '?':
-                        usage(argv[0]);
-                        break;
+                        case 'i':
+                                input_file = optarg;
+                                break;
+                        case 'o':
+                                output_file = optarg;
+                                break;
+                        case 'f':
+                                format = optarg;
+                                break;
+                        case 'm':
+                                M = atoi(optarg);
+                                break;
+                        case '?':
+                                usage(argv[0]);
+                                break;
                 }
         }
 
@@ -216,18 +227,18 @@ int main(int argc, char *argv[] ) {
         else {
                 switch(format[0])
                 {
-                case 't': //"text"
-                        outstream = init_stream(output_file, 0, M);
-                        break;
-                case 's': //"serif"
-                        outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
-                        break;
-                case 'h': //"hand"
-                        outstream = init_stream(output_file, "daniel.ttf", M);
-                        break;
-                default:
-                        fprintf( stderr, "Unrecognized format.\n");
-                        return 1;
+                        case 't': //"text"
+                                outstream = init_stream(output_file, 0, M);
+                                break;
+                        case 's': //"serif"
+                                outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
+                                break;
+                        case 'h': //"hand"
+                                outstream = init_stream(output_file, "daniel.ttf", M);
+                                break;
+                        default:
+                                fprintf( stderr, "Unrecognized format.\n");
+                                return 1;
                 }
         }
 
@@ -254,18 +265,29 @@ int main(int argc, char *argv[] ) {
    */
 
 static int justify_par(int i, struct stream* outformat, unsigned long M,
-                unsigned N, int nbwords, char** tabwords, long size_separator)
+                unsigned N, int nbwords, char** tabwords, long size_separator, int* penalties_array)
 {
+        //TODO cas où un mot est plus long que la largeur de ligne demandée
         int min = M;
-        int k = 0;
+        int k = i;
+        int k_min;
         int aux, nbspaces;
-        if (E(i, nbwords, M, tabwords, outformat, size_separator) >= 0)
+        if (E(i, nbwords - 1, M, tabwords, outformat, size_separator) >= 0)
                 return 0;
-        while (k < nbwords && (nbspaces = E(i, k, M, tabwords, outformat,
-                                        size_separator)) >= 0) {
-                if ((aux = justify_par(k+1, outformat, M, N, nbwords, tabwords,
-                                                size_separator) + penality(nbspaces, N))
-                                >= 0) min = aux;
+        while (k < nbwords - 1 && (nbspaces = E(i, k, M, tabwords, outformat,
+                                        size_separator)) >= 0) { //Computes the minimum
+                printf("justify : %d\n", k);
+                if (penalties_array[nbwords*i+k] != -1)
+                        aux = penalties_array[nbwords*i+k];
+                else { 
+                        aux = justify_par(k+1, outformat, M, N, nbwords, tabwords,
+                                        size_separator, penalties_array) + penality(nbspaces, N);
+                        penalties_array[nbwords*i+k] = aux;
+                }
+                if (aux < min) {
+                        min = aux;
+                        k_min = k;
+                }
                 k++;
         }
         return min;
@@ -292,10 +314,10 @@ static int E(int i, int n, unsigned long M, char** tabwords,
 static int L(int i, int n, char** tabwords, struct stream* outformat, long
                 size_separator)
 {
-        int words_n_spaces_length = wordlength(outformat, tabwords[0]);
+        int words_n_spaces_length = wordlength(outformat, tabwords[i]);
         int k;
         for (k = i+1; k <= n; k++) {
-                words_n_spaces_length += wordlength(outformat, tabwords[i]) +
+                words_n_spaces_length += wordlength(outformat, tabwords[k]) +
                         size_separator;
         }
         return words_n_spaces_length;
