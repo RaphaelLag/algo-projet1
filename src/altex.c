@@ -105,8 +105,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         par_len += wordlength(outformat, buffer);
                         tabwords[nbwords] = (char*) calloc(n, sizeof(char));
                         memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
-                        //printf("%s\n", tabwords[nbwords]);
-                        //fflush(stdout);
+                        printf("%s ", tabwords[nbwords]);
+                        fflush(stdout);
                         nbwords++;
                         // printf("%s ", buffer) ;
                         /*else { // word of length n 
@@ -128,7 +128,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         draw_wordline(outformat, nbwords, tabwords, 1);
                 } else {
                         // else we recursively compute the optimal jusitfication 
-                        printf("nbwords : %d\n",nbwords);
+                        //printf("nbwords : %d\n",nbwords);
                         sumval_all_paragraphs += justify_par(0, outformat, M, N, nbwords,
                                         tabwords, size_separator, (int *)penalties_array);
                 }
@@ -137,7 +137,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 par_len = 0;
                 nbwords = 0;
                 //free_tab(tabwords, len);
-                //printf("\n\n ") ;
+                printf("\n\n ") ;
         }
         free(tabwords);
         free(buffer) ;
@@ -270,13 +270,12 @@ static int justify_par(int i, struct stream* outformat, unsigned long M,
         //TODO cas où un mot est plus long que la largeur de ligne demandée
         int min = M;
         int k = i;
-        int k_min;
         int aux, nbspaces;
         if (E(i, nbwords - 1, M, tabwords, outformat, size_separator) >= 0)
                 return 0;
         while (k < nbwords - 1 && (nbspaces = E(i, k, M, tabwords, outformat,
                                         size_separator)) >= 0) { //Computes the minimum
-                printf("justify : %d\n", k);
+                //printf("justify : %d\n", k);
                 if (penalties_array[nbwords*i+k] != -1)
                         aux = penalties_array[nbwords*i+k];
                 else { 
@@ -286,7 +285,6 @@ static int justify_par(int i, struct stream* outformat, unsigned long M,
                 }
                 if (aux < min) {
                         min = aux;
-                        k_min = k;
                 }
                 k++;
         }
