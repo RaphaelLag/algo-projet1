@@ -158,6 +158,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 //      + on libère la mémoire
                 par_len = 0;
                 nbwords = 0;
+                // TODO: remettre celui là :
                 //free_tab(tabwords, len);
                 printf("\n\n ") ;
         }
@@ -194,7 +195,7 @@ int main(int argc, char *argv[] ) {
         char c;
 
         long M = 40 ;
-        char* input_file = "test.txt";
+        char* input_file = "texte-test-court.txt";
         char* output_file = 0;
         char* format = 0;
 
@@ -340,10 +341,14 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat, u
                         aux = phi_memoization[(n+1)*i+k] + penality(nbspaces, N);
                 // Else, we compute the penalty for the paragraph beginning 
                 // at the word N° k+1:
-                else   
+                else{  
                         aux = justify_par(k+1, n, i, outformat, M, N,tabwords,
                                         size_separator, phi_memoization, optimal_choice) + penality(nbspaces, N);
-                
+                        // phi[i][k] (i: debut ligne, k: fin ligne)
+                        // Cout de la ligne allant des mots i à k, + Cout optimal des lignes qui suivent (de k+1 à fin)
+                        // (n+1)* i car chaque ligne du tableau est de taille nb_words (= n+1).
+                        phi_memoization[(n+1)*i+k] = min; // Todo dans le else avant.
+                }
                 // Update of the current min penality
                 if (aux < min) {
                         min = aux;
@@ -351,11 +356,7 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat, u
                 }
                 k++;
         }
-
-        // phi[i][k] (i: debut ligne, k: fin ligne)
-        // Cout de la ligne allant des mots i à k, + Cout optimal des lignes qui suivent (de k+1 à fin)
-        // (n+1)* i car chaque ligne du tableau est de taille nb_words (= n+1).
-        phi_memoization[(n+1)*i+k] = min; // Todo dans le else avant.
+        
 
         return min;
 }
