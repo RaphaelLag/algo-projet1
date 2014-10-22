@@ -87,6 +87,15 @@ static int Delta(int i, int n, char** tabwords, struct stream* outformat, long
  * @param N: function to optimize is #spaces^N 
  * @return: the cost of an optimal alignment
  */
+
+struct solution{
+    int pos;
+    struct solution* next;
+};
+
+static struct solution* solution_text_alignement(int i, int k, int* optimal_choice);
+
+
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsigned N) ;
 
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
@@ -120,8 +129,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         tabwords[nbwords] = (char*) calloc(n, sizeof(char));
                         memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
                         // Print of the word read.
-                        printf("%s ", tabwords[nbwords]);
-                        fflush(stdout);
+                        //printf("%s ", tabwords[nbwords]);
+                        //fflush(stdout);
                         nbwords++;
                         // printf("%s ", buffer) ;
                         /*else { // word of length n 
@@ -147,12 +156,27 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 // Case when the paragraph's length is less than M (line size)
                 if (par_len < M) { 
                         // Nothing to do, we write the paragraph in the output
-                        //draw_wordline(outformat, nbwords, tabwords, 1);
+                        draw_wordline(outformat, nbwords, tabwords, 1);
                 } else {
                         // else we recursively compute the optimal jusitfication 
                         //printf("nbwords : %d\n",nbwords);
-                        sumval_all_paragraphs += justify_par(0, nbwords - 1, -1, outformat, M, N, 
+                        sumval_all_paragraphs += justify_par(0, nbwords - 1, 0, outformat, M, N, 
                                         tabwords, size_separator, (int *)phi_memoization, (int*) optimal_choice);
+                        
+
+                        printf("%d\n", optimal_choice[0][nbwords - 1]);
+                        //draw_wordline(outformat, nbwords, tabwords, 1);
+                        /*
+                        struct solution* sol = solution_text_alignement(0, nbwords-1, (int*) optimal_choice);
+                        
+                        int last_pos = nbwords;
+                        while(sol){
+                            draw_wordline(outformat, last_pos - sol->pos, tabwords+sol->pos, 1);
+                            printf("\n");
+                            last_pos = sol->pos;
+                            sol = sol->next;
+                        }
+                        //*/
                 }
                 //      on réinitialise les variables nécessaires pour le prochain paragraphe
                 //      + on libère la mémoire
@@ -194,7 +218,7 @@ int main(int argc, char *argv[] ) {
         //Command line parsing
         char c;
 
-        long M = 40 ;
+        long M = 40 ; // 40
         char* input_file = "texte-test-court.txt";
         char* output_file = 0;
         char* format = 0;
@@ -382,19 +406,16 @@ Sol(0,k3)  = -1;
 
 */
 
-struct solution{
-    int pos;
-    struct solution* next;
-};
 
 
-struct solution* solution_text_alignement(int i, int k, int** optimal_choice)
+
+struct solution* solution_text_alignement(int i, int k, int* optimal_choice)
 {
     struct solution* sol = NULL;
     int new_i = i;
     int new_k = k;
-    
-    while(optimal_choice[new_i][new_k] != -1){
+    // TODO: boucle infinie ici + malloc en série !! OMG !! on est trop morts !!!!!
+    while(optimal_choice[(k+1)*new_i + new_k] != 0){
         // Adding of the new solution at the head of the list.
         // |- Alloc new list element
         struct solution* new_sol = (struct solution*) malloc(sizeof(struct solution));
@@ -403,7 +424,7 @@ struct solution* solution_text_alignement(int i, int k, int** optimal_choice)
             exit(EXIT_FAILURE);
         }
         // |- Link the new element in head of the list.
-        new_sol->pos = optimal_choice[new_i][new_k];
+        new_sol->pos = optimal_choice[ (k+1)*new_i + new_k];
         new_sol->next = sol;
         sol = new_sol;
         
