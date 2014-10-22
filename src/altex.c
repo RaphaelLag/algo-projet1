@@ -19,6 +19,9 @@
  */
 //static void free_tab(char** tab, int tab_len);
 
+// TODO: replace all parameters by a struct "paragraph_data"
+// TODO : replace recursive algorithm by a an iterative one.
+// TODO: memoize values of penality(nbspaces, N) in justify_par
 
 /**
  * Computes the optimal justification of a parapgraph according to the following
@@ -37,16 +40,19 @@
  *  return min;
  * 
  * @param i: we compute from the word at the index i of tabwords
+ * @param n: we compute till the word at the index n of tabwords
  * @param outformat: output stream
  * @param M: line size (in units)
  * @param N: function to optimize is #spaces^N 
- * @param nbwords: number of words in the paragraph considered
  * @param tabwords: array of the words in the paragraph considered
  * @param size_separator: the minimum size of the white space between two consecutive words on a line
+ * @param optimal_choice: stocks the choice made to obtain the optimal solution
  * @param return the cost for an optimal alignment for the parapgraph considered 
  */
-static int justify_par(int i, struct stream* outformat, unsigned long M,
-                unsigned N, int nbwords, char** tabwords, long size_separator, int* penalties_array);
+
+static int justify_par(int i, int n, int previous_i, struct stream* outformat, unsigned long M,
+                unsigned N, char** tabwords, long size_separator,
+                int* phi_memoization, int* optimal_solution);
 /**
  * Computes the space size to add in order to make a line composed of the words from the
  * ith word till the nth word have a total size of M.
@@ -70,7 +76,7 @@ static int E(int i, int n, unsigned long M, char** tabword,
  * @param size_separator: the minimum size of the white space between two consecutive words on a line
  * @param return the size (in units) of the words between the indexes i and n 
  */
-static int L(int i, int n, char** tabwords, struct stream* outformat, long
+static int Delta(int i, int n, char** tabwords, struct stream* outformat, long
                 size_separator);
 
 /** Optimal alignment of a text (read from input file in) with ligns of fixed length (M units) written on output file (out).
@@ -122,14 +128,17 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                           printf("%s ", buffer) ;
                           }*/
                 }
+                // Stocks the choices made to obtain the optimal solution
+                int optimal_choice[nbwords][nbwords];
 
-                //Array used for the memoization
-                int penalties_array [nbwords][nbwords];
+                // memoization of penalties for the current paragraph
+                int phi_memoization [nbwords][nbwords];
+
                 int i,j;
-                //Init of the memoization array with the default value -1
+                // Init of the memoization array with the default value -1
                 for (i = 0; i < nbwords; i++) {
                         for (j = 0; j < nbwords; j++) {
-                                penalties_array[i][j] = -1;             
+                                phi_memoization[i][j] = -1;             
                         }
                 }
                 // Update of paragraph length with spaces' size
@@ -142,8 +151,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 } else {
                         // else we recursively compute the optimal jusitfication 
                         //printf("nbwords : %d\n",nbwords);
-                        sumval_all_paragraphs += justify_par(0, outformat, M, N, nbwords,
-                                        tabwords, size_separator, (int *)penalties_array);
+                        sumval_all_paragraphs += justify_par(0, nbwords - 1, -1, outformat, M, N, 
+                                        tabwords, size_separator, (int *)phi_memoization, (int*) optimal_choice);
                 }
                 //      on réinitialise les variables nécessaires pour le prochain paragraphe
                 //      + on libère la mémoire
@@ -295,11 +304,21 @@ int main(int argc, char *argv[] ) {
         0 if E(i,n) >= 0
         min[k>=i; E(i,k)>=0] ( ϕ(k+1) + N(E(i,k))) else
     }
-
+   
+    @param i: we compute from the word at the index i of tabwords
+    @param n: we compute till the word at the index n of tabwords
+    @param outformat: output stream
+    @param M: line size (in units)
+    @param N: function to optimize is #spaces^N 
+    @param tabwords: array of the words in the paragraph considered
+    @param size_separator: the minimum size of the white space between two consecutive words on a line
+    @param penalties_array: stocks penalties of the different solutions
+    @param optimal_choice: stocks the choice made to obtain the optimal solution
     @return Min (optimal) penalty of a paragraph
  */
-static int justify_par(int i, struct stream* outformat, unsigned long M,
-                unsigned N, int nbwords, char** tabwords, long size_separator, int* penalties_array)
+static int justify_par(int i, int n, int previous_i, struct stream* outformat, unsigned long M,
+                unsigned N, char** tabwords, long size_separator,
+                 int* phi_memoization, int* optimal_choice)
 {
         //TODO cas où un mot est plus long que la largeur de ligne demandée
         int min = M;
@@ -308,39 +327,107 @@ static int justify_par(int i, struct stream* outformat, unsigned long M,
 
         // The paragraphe (= a line in this case) is not long enough to fulfill a line
         // No opitmisation to do.
-        if (E(i, nbwords - 1, M, tabwords, outformat, size_separator) >= 0)
+        if (E(i, n, M, tabwords, outformat, size_separator) >= 0){
+                optimal_choice[(n+1)* 0 + n] = previous_i;
                 return 0;
+        }
         
-        //Computes the minimum
-        while (k < nbwords - 1 && 
+        // Computes the minimum
+        while (k <= n && 
             (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0){ 
-                //printf("justify : %d\n", k);
                 // if the penalty value as ever been wordked we return it :
-                if (penalties_array[nbwords*i+k] != -1)
-                        aux = penalties_array[nbwords*i+k];
-                // Else, we compute the penalty for the paragraph beginning at k+1:
-                else { 
-                        aux = justify_par(k+1, outformat, M, N, nbwords, tabwords,
-                                        size_separator, penalties_array) + penality(nbspaces, N);
-                        penalties_array[nbwords*i+k] = aux;
-                }
+                if (phi_memoization[(n+1)*i+k] != -1)
+                        aux = phi_memoization[(n+1)*i+k] + penality(nbspaces, N);
+                // Else, we compute the penalty for the paragraph beginning 
+                // at the word N° k+1:
+                else   
+                        aux = justify_par(k+1, n, i, outformat, M, N,tabwords,
+                                        size_separator, phi_memoization, optimal_choice) + penality(nbspaces, N);
+                
+                // Update of the current min penality
                 if (aux < min) {
                         min = aux;
+                        optimal_choice[(n+1)*i + k] = previous_i; 
                 }
                 k++;
         }
+
+        // phi[i][k] (i: debut ligne, k: fin ligne)
+        // Cout de la ligne allant des mots i à k, + Cout optimal des lignes qui suivent (de k+1 à fin)
+        // (n+1)* i car chaque ligne du tableau est de taille nb_words (= n+1).
+        phi_memoization[(n+1)*i+k] = min; // Todo dans le else avant.
+
         return min;
+}
+/*
+
+*** Graphical representation of the problem:
+
+0______________I____________
+|______________|____________|            } Paragraph
+|________|__________________|            }
+         K                   \__Nb_words 
+
+*** Solution memoization principle: 
+
+Sol(0,n)   = k1; 
+Sol(k1,n)  = k2;
+sol(k2,k1) = k3;
+Sol(k3,k2) = 0;
+Sol(0,k3)  = -1;
+
+|-----|--------|-----|---|
+0     k3       k2    k1  n 
+
+*/
+
+struct solution{
+    int pos;
+    struct solution* next;
+};
+
+
+struct solution* solution_text_alignement(int i, int k, int** optimal_choice)
+{
+    struct solution* sol = NULL;
+    int new_i = i;
+    int new_k = k;
+    
+    while(optimal_choice[new_i][new_k] != -1){
+        // Adding of the new solution at the head of the list.
+        // |- Alloc new list element
+        struct solution* new_sol = (struct solution*) malloc(sizeof(struct solution));
+        if(!new_sol){
+            fprintf(stderr, "new_sol malloc : allocation failed");
+            exit(EXIT_FAILURE);
+        }
+        // |- Link the new element in head of the list.
+        new_sol->pos = optimal_choice[new_i][new_k];
+        new_sol->next = sol;
+        sol = new_sol;
+        
+        // Update of new_i, new_k
+        new_k = (new_sol->next == NULL) ? new_k : new_i; // pas pos, last interval
+        new_i = new_sol->pos;
+    }
+    return sol;
 }
 
 /*
     ej = E(i;k) = M - Δ(i;k)
 
+    @param i: index of the first word of the line (in tabwords)
+    @param n: index of the last word of the line (in tabwords)
+    @param M: line size (in units)
+    @param tabwords: array containing the whole text.
+    @param outformat: output stream
+    @param size_separator: the minimum size of the white space between two consecutive words on a line
     @return size of space to add to the line in order to justify the paragraph
 */
-static int E(int i, int n, unsigned long M, char** tabwords,
+static int E(int i, int k, unsigned long M, char** tabwords,
                 struct stream* outformat, long size_separator)
 {
-        return (M - L(i, n, tabwords, outformat, size_separator));
+        return (M - Delta(i, k, tabwords, outformat, size_separator));
 }
 
 /*
@@ -353,13 +440,14 @@ static int E(int i, int n, unsigned long M, char** tabwords,
     @param size_separator: the minimum size of the white space between two consecutive words on a line
     @return min size of a line (size of the n words + n-1 spaces)
 */
-static int L(int i, int n, char** tabwords, struct stream* outformat, long
+static int Delta(int i, int k, char** tabwords, struct stream* outformat, long
                 size_separator)
 {
         int words_n_spaces_length = wordlength(outformat, tabwords[i]);
-        int k;
-        for (k = i+1; k <= n; k++) {
-                words_n_spaces_length += wordlength(outformat, tabwords[k]) +
+        int j;
+        // TODO : on va de j à k ou de j à k-1 ? (cf formule plus haut)
+        for (j = i+1; j <= k; j++) {
+                words_n_spaces_length += wordlength(outformat, tabwords[j]) +
                         size_separator;
         }
         return words_n_spaces_length;
