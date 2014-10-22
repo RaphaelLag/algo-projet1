@@ -147,7 +147,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 // Case when the paragraph's length is less than M (line size)
                 if (par_len < M) { 
                         // Nothing to do, we write the paragraph in the output
-                        draw_wordline(outformat, nbwords, tabwords, 1);
+                        //draw_wordline(outformat, nbwords, tabwords, 1);
                 } else {
                         // else we recursively compute the optimal jusitfication 
                         //printf("nbwords : %d\n",nbwords);
