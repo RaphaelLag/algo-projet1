@@ -395,12 +395,13 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat, u
 
 *** Solution memoization principle: 
 
-Sol(0,n)   = k1; 
-Sol(k1,n)  = k2;
-sol(k2,k1) = k3;
-Sol(k3,k2) = 0;
-Sol(0,k3)  = -1;
-
+                         parcours
+Sol(0,n)   = k1;  ^          |         
+Sol(k1,n)  = k2;  |          |
+sol(k2,k1) = k3;  |          |
+Sol(k3,k2) = 0;   |          |
+Sol(0,k3)  = -1;  |          ▽
+              remplissage  
 |-----|--------|-----|---|
 0     k3       k2    k1  n 
 
