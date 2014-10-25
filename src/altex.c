@@ -240,7 +240,7 @@ int main(int argc, char *argv[] ) {
         char c;
 
         long M = 40 ; // 40
-        char* input_file = "test_text.txt";//"texte-test-court.txt";
+        char* input_file = "texte-test-court.txt"; //"test_text.txt";
         char* output_file = 0;
         char* format = 0;
 
