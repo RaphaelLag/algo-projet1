@@ -158,6 +158,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         // Nothing to do, we write the paragraph in the output
                         draw_wordline(outformat, nbwords, tabwords, 1);
                 } else {
+                    draw_wordline(outformat, nbwords, tabwords, 1);
                         // else we recursively compute the optimal jusitfication 
                         //printf("nbwords : %d\n",nbwords);
                         sumval_all_paragraphs += justify_par(0, nbwords - 1, 0, outformat, M, N, 
@@ -166,7 +167,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
 
                         printf("%d\n", optimal_choice[0][nbwords - 1]);
                         //draw_wordline(outformat, nbwords, tabwords, 1);
-                        /*
+                        //*
                         struct solution* sol = solution_text_alignement(0, nbwords-1, (int*) optimal_choice);
                         
                         int last_pos = nbwords;
@@ -219,7 +220,7 @@ int main(int argc, char *argv[] ) {
         char c;
 
         long M = 40 ; // 40
-        char* input_file = "texte-test-court.txt";
+        char* input_file = "test_text.txt";//"texte-test-court.txt";
         char* output_file = 0;
         char* format = 0;
 
