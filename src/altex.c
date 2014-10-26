@@ -14,6 +14,10 @@
 #include <string.h>
 
 
+/* ************************************************************************** */
+/* *************** Data Structures & Function Signatures ******************** */
+/* ************************************************************************** */
+
 struct decoupage {
         int cout;
         int coupe;
@@ -97,6 +101,11 @@ static int Delta(int i, int k, char** tabwords, struct file_data* f);
  * @param phi_memoization: structure used to get the index for where to make a carriage return
  */
 static void draw_wordparagraph(struct stream* outformat, char** tabwords, struct decoupage* phi_memoization, int nbwords);
+
+
+/* ************************************************************************** */
+/* ****************************** Altex & Main ****************************** */
+/* ************************************************************************** */
 
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsigned N) ;
 
