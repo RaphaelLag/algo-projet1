@@ -348,36 +348,32 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
         int k = i;
         int aux, nbspaces;
 
-        // The paragraphe (= a line in this case) is not long enough to fulfill a line
-        // No opitmisation to do.
-        if (E(i, n, M, tabwords, outformat, size_separator) >= 0){
+        // The paragraphe's length < a line's length: No optimisation to do
+        if (E(i, n, M, tabwords, outformat, size_separator) >= 0)
                 return 0;
-        }
 
-        // TODO : ne faut -il pas le mettre dans la boucle ?
-        //If a word is larger than M we truncate it 
-        if ((nbspaces = E(i, k, M, tabwords, outformat, size_separator)) < 0) {
-                //TODO : appel à la fonction de troncature d'un mot
-                fprintf(stderr, "Attention mot plus grand que M\n");
-        }
+        // If a word is larger than M : we truncate it 
+        if ((nbspaces = E(i, k, M, tabwords, outformat, size_separator)) < 0)
+                word_truncate_at_length(outformat, tabwords[i], M);
 
-        // Computes the min
+        // Computes the min penalty value :
         do { 
                 // Computes the value of phi(k+1) if necessary
                 if (phi_memoization[k+1].cout == -1)
                         phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
                                 size_separator, space_memoization, phi_memoization);
-                                        
+                                 
+                // Computes the penalty val for this configuration (from i to k)
                 aux = phi_memoization[k+1].cout + penality(nbspaces, N);
                 
-                // Update of the current min penality
+                // Update of the current min penality (if necessary)
                 if (aux < min) {
                         min = aux;
                         phi_memoization[i].coupe = k+1;
                 }
                 k++;
         } while (k < n &&
-                        (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0);
+             (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0);
 
         return min;
 }
