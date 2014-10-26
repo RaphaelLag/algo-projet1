@@ -23,7 +23,7 @@ struct decoupage {
  * free the memory allocated to tab
  *
  */
-//static void free_tab(char** tab, int tab_len);
+static void free_tab(char** tab);
 
 // TODO: replace all parameters by a struct "paragraph_data"
 // TODO : replace recursive algorithm by a an iterative one.
@@ -58,7 +58,7 @@ struct decoupage {
 
 static int justify_par(int i, int n, int previous_i, struct stream* outformat, unsigned long M,
                 unsigned N, char** tabwords, long size_separator,
-                int* space_memoization, struct decoupage* phi_memoization, int* optimal_solution);
+                int* space_memoization, struct decoupage* phi_memoization);
 /**
  * Computes the space size to add in order to make a line composed of the words from the
  * ith word till the nth word have a total size of M.
@@ -107,9 +107,6 @@ struct solution{
 };
 
 
-static struct solution* solution_text_alignement(int i, int k, int* optimal_choice);
-
-
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsigned N) ;
 
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
@@ -140,21 +137,13 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 // Update of paragraph length with the word's size.
                                 par_len += wordlength(outformat, buffer);
                                 // We add the word to the array. 
-                                tabwords[nbwords] = (char*) calloc(n, sizeof(char));
+                                tabwords[nbwords] = (char*) calloc(n+1, sizeof(char));
                                 memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
-                                // Print of the word read.
-                                //printf("%s ", tabwords[nbwords]);
-                                //fflush(stdout);
+
                                 nbwords++;
-                                // printf("%s ", buffer) ;
-                                /*else { // word of length n 
-                                  printf("%s ", buffer) ;
-                                  }*/
                         }
                 }
                 if (nbwords > 0) {
-                        // Stocks the choices made to obtain the optimal solution
-                        int optimal_choice[nbwords][nbwords];
 
                         // memoization of penalties for the current paragraph
                         struct decoupage phi_memoization [nbwords];
@@ -178,34 +167,19 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 draw_wordline(outformat, nbwords, tabwords, 1);
                         } else {
                                 // else we recursively compute the optimal jusitfication 
-                                //printf("nbwords : %d\n",nbwords);
                                 sumval_all_paragraphs += justify_par(0, nbwords - 1, 0, outformat, M, N, 
-                                                tabwords, size_separator, (int *)space_memoization, (struct decoupage *)phi_memoization, (int*) optimal_choice);
+                                                tabwords, size_separator, (int *)space_memoization, (struct decoupage *)phi_memoization);
 
                                 draw_wordparagraph(outformat, tabwords,
                                                 (struct decoupage*)phi_memoization, nbwords);
-                                //printf("%d\n", optimal_choice[0][nbwords - 1]);
-                                //draw_wordline(outformat, nbwords, tabwords, 1);
-                                /*
-                                   struct solution* sol = solution_text_alignement(0, nbwords-1, (int*) optimal_choice);
-
-                                   int last_pos = nbwords;
-                                   while(sol){
-                                   draw_wordline(outformat, last_pos - sol->pos, tabwords+sol->pos, 1);
-                                   printf("\n");
-                                   last_pos = sol->pos;
-                                   sol = sol->next;
-                                   }
-                                //*/
                         }
                         //      on réinitialise les variables nécessaires pour le prochain paragraphe
                         //      + on libère la mémoire
                         par_len = 0;
                         nbwords = 0;
-                        // TODO: remettre celui là :
-                        //free_tab(tabwords, len);
-                        //printf("\n\n ") ;
                 }
+                free_tab(tabwords);
+
         }
         free(tabwords);
         free(buffer) ;
@@ -317,20 +291,23 @@ int main(int argc, char *argv[] ) {
 
         //free and flush outstream
         free_format(outstream);
+        fclose(f);
+                                                
         return 0 ;
 }
 
 /* ************************************************************************** */
 /* *************************** Utility Functions **************************** */
 /* ************************************************************************** */
-/*
-   static void free_tab(char** tab, int tab_len) {
-   int i;
-   for (i = 0; i < tab_len; i++) {
-   free(tab[i]);
-   }
-   }
-   */
+
+static void free_tab(char** tab) {
+        int i;
+        for (i = 0; tab[i] != NULL; i++) {
+                free(tab[i]);
+                tab[i] = NULL;
+        }
+}
+
 
 /* ϕ ALGO : 
  * L (i,k) = L(m_k) + sum(L(m_j) + mu) (j=1,j<=k-1)
@@ -365,7 +342,7 @@ int main(int argc, char *argv[] ) {
 static int justify_par(int i, int n, int previous_i, struct stream* outformat,
                 unsigned long M,unsigned N, char** tabwords,
                 long size_separator, int* space_memoization,
-                struct decoupage* phi_memoization, int* optimal_choice)
+                struct decoupage* phi_memoization)
 {
         //TODO cas où un mot est plus long que la largeur de ligne demandée
         int min = M;
@@ -375,7 +352,6 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
         // The paragraphe (= a line in this case) is not long enough to fulfill a line
         // No opitmisation to do.
         if (E(i, n, M, tabwords, outformat, size_separator) >= 0){
-                optimal_choice[(n+1)* 0 + n] = previous_i;
                 return 0;
         }
 
@@ -392,8 +368,7 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
         // at the word N° k+1:
         else{  
                 phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
-                                size_separator, space_memoization, phi_memoization,
-                                optimal_choice);
+                                size_separator, space_memoization, phi_memoization);
                 min = phi_memoization[k+1].cout + penality(nbspaces, N);
         }
         phi_memoization[i].coupe = k+1;
@@ -409,70 +384,18 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
                 // at the word N° k+1:
                 else {
                         phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
-                                        size_separator, space_memoization, phi_memoization, optimal_choice);
+                                size_separator, space_memoization, phi_memoization);
                         aux = phi_memoization[k+1].cout + penality(nbspaces, N);
                 }
                 // Update of the current min penality
                 if (aux < min) {
                         min = aux;
-                        optimal_choice[(n+1)*i + k] = previous_i; 
                         phi_memoization[i].coupe = k+1;
                 }
                 k++;
         }
 
         return min;
-}
-/*
-
- *** Graphical representation of the problem:
-
- 0______________I____________
- |______________|____________|            } Paragraph
- |________|__________________|            }
- K                            \__Nb_words 
-
- *** Solution memoization principle: 
-
-                          parcours
- Sol(0,n)   = k1;  ^          |         
- Sol(k1,n)  = k2;  |          |
- sol(k2,k1) = k3;  |          |
- Sol(k3,k2) = 0;   |          |
- Sol(0,k3)  = -1;  |          ▽
-             remplissage  
- |-----|--------|-----|---|
- 0     k3       k2    k1  n 
-
-*/
-
-
-
-
-struct solution* solution_text_alignement(int i, int k, int* optimal_choice)
-{
-        struct solution* sol = NULL;
-        int new_i = i;
-        int new_k = k;
-        // TODO: boucle infinie ici + malloc en série !! OMG !! on est trop morts !!!!!
-        while(optimal_choice[(k+1)*new_i + new_k] != 0){
-                // Adding of the new solution at the head of the list.
-                // |- Alloc new list element
-                struct solution* new_sol = (struct solution*) malloc(sizeof(struct solution));
-                if(!new_sol){
-                        fprintf(stderr, "new_sol malloc : allocation failed");
-                        exit(EXIT_FAILURE);
-                }
-                // |- Link the new element in head of the list.
-                new_sol->pos = optimal_choice[ (k+1)*new_i + new_k];
-                new_sol->next = sol;
-                sol = new_sol;
-
-                // Update of new_i, new_k
-                new_k = (new_sol->next == NULL) ? new_k : new_i; // pas pos, last interval
-                new_i = new_sol->pos;
-        }
-        return sol;
 }
 
 /*
