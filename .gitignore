@@ -30,3 +30,8 @@
 
 # Netbeans :
 ./src/nbproject
+
+# Latex:
+*.aux
+*.pdf
+*.log
