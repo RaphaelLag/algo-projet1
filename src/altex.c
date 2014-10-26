@@ -344,8 +344,7 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
                 long size_separator, int* space_memoization,
                 struct decoupage* phi_memoization)
 {
-        //TODO cas où un mot est plus long que la largeur de ligne demandée
-        int min = M;
+        int min = INT_MAX;
         int k = i;
         int aux, nbspaces;
 
@@ -355,45 +354,30 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
                 return 0;
         }
 
+        // TODO : ne faut -il pas le mettre dans la boucle ?
         //If a word is larger than M we truncate it 
         if ((nbspaces = E(i, k, M, tabwords, outformat, size_separator)) < 0) {
                 //TODO : appel à la fonction de troncature d'un mot
                 fprintf(stderr, "Attention mot plus grand que M\n");
         }
 
-        // Computes the minimum
-        if (phi_memoization[k+1].cout != -1)
-                min = phi_memoization[i+1].cout + penality(nbspaces, N);
-        // Else, we compute the penalty for the paragraph beginning 
-        // at the word N° k+1:
-        else{  
-                phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
-                                size_separator, space_memoization, phi_memoization);
-                min = phi_memoization[k+1].cout + penality(nbspaces, N);
-        }
-        phi_memoization[i].coupe = k+1;
-
-        k++;
-
-        while (k < n &&
-                        (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0){ 
-                // if the penalty value as ever been wordked we return it :
-                if (phi_memoization[k+1].cout != -1)
-                        aux = phi_memoization[k+1].cout + penality(nbspaces, N);
-                // Else, we compute the penalty for the paragraph beginning 
-                // at the word N° k+1:
-                else {
+        // Computes the min
+        do { 
+                // Computes the value of phi(k+1) if necessary
+                if (phi_memoization[k+1].cout == -1)
                         phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
                                 size_separator, space_memoization, phi_memoization);
-                        aux = phi_memoization[k+1].cout + penality(nbspaces, N);
-                }
+                                        
+                aux = phi_memoization[k+1].cout + penality(nbspaces, N);
+                
                 // Update of the current min penality
                 if (aux < min) {
                         min = aux;
                         phi_memoization[i].coupe = k+1;
                 }
                 k++;
-        }
+        } while (k < n &&
+                        (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0);
 
         return min;
 }
