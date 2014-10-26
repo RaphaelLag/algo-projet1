@@ -19,13 +19,28 @@ struct decoupage {
         int coupe;
 }; 
 
+struct solution{
+        int pos;
+        struct solution* next;
+};
+
+struct file_data{
+        unsigned long M;          // line size (in units)
+        unsigned N;               // coeff such that penalty = #spaces^N 
+        long size_separator;      /* min size of the white space between 
+                                   * two consecutive words on a line 
+                                   */
+        struct stream* outformat; // output stream
+};
+
 /**
  * free the memory allocated to tab
  *
  */
 static void free_tab(char** tab);
 
-// TODO: replace all parameters by a struct "paragraph_data"
+// [DONE] TODO: replace all parameters by a struct "paragraph_data"
+// TODO : update function parameters description. (for the new param)
 // TODO : replace recursive algorithm by a an iterative one.
 // TODO: memoize values of penality(nbspaces, N) in justify_par
 
@@ -56,9 +71,8 @@ static void free_tab(char** tab);
  * @param return the cost for an optimal alignment for the parapgraph considered 
  */
 
-static int justify_par(int i, int n, int previous_i, struct stream* outformat, unsigned long M,
-                unsigned N, char** tabwords, long size_separator,
-                int* space_memoization, struct decoupage* phi_memoization);
+static int justify_par(int i, int n, struct file_data* f, char** tabwords, 
+        int* space_memoization, struct decoupage* phi_memoization);
 /**
  * Computes the space size to add in order to make a line composed of the words from the
  * ith word till the nth word have a total size of M.
@@ -70,8 +84,9 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat, u
  * @param size_separator: the minimum size of the white space between two consecutive words on a line
  * @param return the size (in units) to add
  */
-static int E(int i, int n, unsigned long M, char** tabword,
-                struct stream* outformat, long size_separator);
+
+static int E(int i, int k, char** tabwords, struct file_data* f);
+
 /**
  * return the size(in units) of the words and the minimum spaces between words for the
  * ith word till the nth word.
@@ -82,8 +97,8 @@ static int E(int i, int n, unsigned long M, char** tabword,
  * @param size_separator: the minimum size of the white space between two consecutive words on a line
  * @param return the size (in units) of the words between the indexes i and n 
  */
-static int Delta(int i, int n, char** tabwords, struct stream* outformat, long
-                size_separator);
+
+static int Delta(int i, int k, char** tabwords, struct file_data* f);
 
 /** Optimal alignment of a text (read from input file in) with ligns of fixed length (M units) written on output file (out).
  * @param in: input stream, in ascii (eg in == stdin)
@@ -101,12 +116,6 @@ static int Delta(int i, int n, char** tabwords, struct stream* outformat, long
  */
 static void draw_wordparagraph(struct stream* outformat, char** tabwords, struct decoupage* phi_memoization, int nbwords);
 
-struct solution{
-        int pos;
-        struct solution* next;
-};
-
-
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsigned N) ;
 
 long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
@@ -122,7 +131,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
         char** tabwords = (char** ) calloc(len, sizeof(char*));
         int nbwords = 0;
         long par_len = 0;
-        long size_separator = sizeSeparator(outformat);
+        struct file_data f_data = {M, N, sizeSeparator(outformat), outformat};
+        
         // We read each paragraph from the first one
         while (!endofile) { 
                 int is_paragraph_end = 0 ;
@@ -159,7 +169,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 }
                         }
                         // Update of paragraph length with spaces' size
-                        par_len += size_separator * (nbwords - 1);
+                        par_len += f_data.size_separator * (nbwords - 1);
 
                         // Case when the paragraph's length is less than M (line size)
                         if (par_len < M) {
@@ -167,8 +177,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 draw_wordline(outformat, nbwords, tabwords, 1);
                         } else {
                                 // else we recursively compute the optimal jusitfication 
-                                sumval_all_paragraphs += justify_par(0, nbwords - 1, 0, outformat, M, N, 
-                                                tabwords, size_separator, (int *)space_memoization, (struct decoupage *)phi_memoization);
+                                sumval_all_paragraphs += justify_par(0, nbwords - 1, &f_data,
+                                                tabwords, (int *)space_memoization, (struct decoupage *)phi_memoization);
 
                                 draw_wordparagraph(outformat, tabwords,
                                                 (struct decoupage*)phi_memoization, nbwords);
@@ -339,9 +349,8 @@ static void free_tab(char** tab) {
    @param optimal_choice: stocks the choice made to obtain the optimal solution
    @return Min (optimal) penalty of a paragraph
    */
-static int justify_par(int i, int n, int previous_i, struct stream* outformat,
-                unsigned long M,unsigned N, char** tabwords,
-                long size_separator, int* space_memoization,
+static int justify_par(int i, int n, struct file_data* f,
+                char** tabwords, int* space_memoization,
                 struct decoupage* phi_memoization)
 {
         int min = INT_MAX;
@@ -349,22 +358,23 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
         int aux, nbspaces;
 
         // The paragraphe's length < a line's length: No optimisation to do
-        if (E(i, n, M, tabwords, outformat, size_separator) >= 0)
+        if (E(i, n, tabwords, f) >= 0)
                 return 0;
 
         // If a word is larger than M : we truncate it 
-        if ((nbspaces = E(i, k, M, tabwords, outformat, size_separator)) < 0)
-                word_truncate_at_length(outformat, tabwords[i], M);
+        if ((nbspaces = E(i, k, tabwords, f)) < 0)
+                word_truncate_at_length(f->outformat, tabwords[i], f->M);
 
         // Computes the min penalty value :
         do { 
                 // Computes the value of phi(k+1) if necessary
                 if (phi_memoization[k+1].cout == -1)
-                        phi_memoization[k+1].cout = justify_par(k+1, n, i, outformat, M, N,tabwords,
-                                size_separator, space_memoization, phi_memoization);
+                        phi_memoization[k+1].cout = 
+                                justify_par(k+1, n, f, tabwords,
+                                      space_memoization, phi_memoization);
                                  
                 // Computes the penalty val for this configuration (from i to k)
-                aux = phi_memoization[k+1].cout + penality(nbspaces, N);
+                aux = phi_memoization[k+1].cout + penality(nbspaces, f->N);
                 
                 // Update of the current min penality (if necessary)
                 if (aux < min) {
@@ -373,7 +383,7 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
                 }
                 k++;
         } while (k < n &&
-             (nbspaces = E(i, k, M, tabwords, outformat, size_separator)) >= 0);
+             (nbspaces = E(i, k, tabwords, f)) >= 0);
 
         return min;
 }
@@ -389,10 +399,9 @@ static int justify_par(int i, int n, int previous_i, struct stream* outformat,
    @param size_separator: the minimum size of the white space between two consecutive words on a line
    @return size of space to add to the line in order to justify the paragraph
    */
-static int E(int i, int k, unsigned long M, char** tabwords,
-                struct stream* outformat, long size_separator)
+static int E(int i, int k, char** tabwords, struct file_data* f)
 {
-        return (M - Delta(i, k, tabwords, outformat, size_separator));
+        return (f->M - Delta(i, k, tabwords, f));
 }
 
 /*
@@ -405,20 +414,20 @@ static int E(int i, int k, unsigned long M, char** tabwords,
    @param size_separator: the minimum size of the white space between two consecutive words on a line
    @return min size of a line (size of the n words + n-1 spaces)
    */
-static int Delta(int i, int k, char** tabwords, struct stream* outformat, long
-                size_separator)
+static int Delta(int i, int k, char** tabwords, struct file_data* f)
 {
         //Check erreur bizarre ligne suivante avec indice k
-        int words_n_spaces_length = wordlength(outformat, tabwords[i]);
+        int words_n_spaces_length = wordlength(f->outformat, tabwords[i]);
         int j;
         for (j = i + 1; j <= k; j++) {
-                words_n_spaces_length += wordlength(outformat, tabwords[j]) +
-                        size_separator;
+                words_n_spaces_length += wordlength(f->outformat, tabwords[j]) +
+                        f->size_separator;
         }
         return words_n_spaces_length;
 }
 
-static void draw_wordparagraph(struct stream* outformat, char** tabwords, struct decoupage* phi_memoization, int nbwords)
+static void draw_wordparagraph(struct stream* outformat, char** tabwords, 
+        struct decoupage* phi_memoization, int nbwords)
 {
         int i = 0;
         while ((phi_memoization[i].coupe) != -1)
