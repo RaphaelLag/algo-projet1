@@ -1,0 +1,185 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[latin1]{inputenc}
+%\usepackage[T1]{fontenc}
+\usepackage{fancybox}
+\usepackage{enumerate}
+\usepackage{epsfig}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{epsf}
+\usepackage{psfrag}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{marvosym}
+\usepackage{comment}
+\usepackage{fixltx2e}
+%\usepackage{epsfig}
+%\usepackage{psfig}
+\newcommand{\F}{\mathbb{F}}                                                    
+\newcommand{\Ff}{\mathbb{F}}                                                    
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\ZpZ}{\Z/p.\Z}
+\newcommand{\ZqZ}{\Z/q.\Z}
+\newcommand{\ZnZ}{\Z/n.\Z}
+% \newcommand{\mod}{\mbox{~mod\,}}
+
+%%%% POUR FAIRE TENIR SUR UNE PAGE RECTO-VERSO.....
+\textwidth 18.5cm
+\oddsidemargin -1.75cm
+\evensidemargin -1.75cm
+\textheight 28.0cm
+\topmargin -3.0cm
+
+%   \textwidth 18cm
+   %\oddsidemargin -1.5cm
+   %\evensidemargin -1.5cm
+   %\textheight 26.0cm
+   %\topmargin -2.0cm
+ 
+
+
+%\newenvironment{corrige}[1]{}{}
+\newcommand{\question}[1]{#1}  % pour l'enonce 
+%\newcommand{\question}[1]{}  % pour supprimer l'enonce 
+%\newcommand{\reponse}[1]{$~${\textbf{Correction:}}\textit{#1}}  % pour le corrige 
+\newcommand{\reponse}[1]{}     % pour supprimer le corrige
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\noindent\centerline{\bf\large Questionnaire  TP AOD à compléter et rendre sur teide avant le 13/11/2014 - 23h00  } \\
+Binôme 
+(NOM\textsubscript{1} Prénom\textsubscript{1} --
+ NOM\textsubscript{2} Prénom\textsubscript{2})
+\,: \dotfill
+
+\noindent\begin{enumerate}
+\item QCM: A quel découpage correspond le co\^ut $\phi(i)$ ? \\
+\begin{tabular}{lll}
+% TODO : text à ajouter pour avoir une case cochée 
+% \makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}
+
+   $\square$ A/ $m_0, \ldots, m_n$ 
+     & $\square$ B/ $m_0, \ldots, m_{i-1}$ 
+     & $\square$ C/ $m_0, \ldots, m_i$  
+     \\
+       $\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}$ D/ $m_i, \ldots, m_n$  
+     & $\square$ E/ $m_{i+1}, \ldots, m_n$   
+     & $\square$ F/ aucune des réponses A..E
+\end{tabular}
+
+\item QCM: Que vaut $C^\star$ du  paragraphe?  \\
+\begin{tabular}{lllll}
+       $\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}$ A/ $\phi(0)$  
+     & $\square$ B/ $\phi(1)$  
+     & $\square$ C/ $\phi(n-1)$  
+     & $\square$ D/ $\phi(n)$  
+     & $\square$ E/ aucune des réponses A..D
+\end{tabular}
+
+% \item Pour un fichier de $l$ caractères, justifier comment calculer toutes les valeurs  $L[i,k]$ en co\^ut $O(l)$, donc en côut amorti $O(1)$ pour chaque $L(i,k)$. 
+% On demande de décrire {\em clairement} et {\em synthétiquement}  l'algorithme en 5 lignes maximum sans expliciter de code,
+% en justifiant que le co\^ut amorti est constant.
+% \reponse{On a une itération dans laquelle, en fixant l'ordre, on évite les recalculs. \\
+% Sinon, pour un programme récursif, on fait un précalcul
+% des sommes partielles $S[k] =  \left(\sum_{j=1}^{k-1} w_j + 1 - d_j \right)$ pour $k=1, \ldots n$.
+% La mémoire requise est $n$ entiers et le nombre d'opérations est $O(n)$.  \\
+% Ensuite on calcule $L(i,k) = S[k] - S[i] + w_k + d_k$ en co\^ut $O(1)$.  \\
+% Comme il y a $\Theta(n^2)$ valeurs $L(i,k)$ à calculer, le co\^ut amorti par calcul est $O\left( 1 + \frac{n}{n^2}\right)=O(1)$. 
+% }
+
+\item 
+   Analyser le coût de votre implémentation en répondant aux questions ci-dessous. 
+   Soit un paragraphe comportant $t$ caractères (imprimables et séparateurs) formant  $n$ mots ayant chacun au plus $m$ caractères.
+   \begin{enumerate}
+      \item Analyser asymptotiquement (notation $O$ ou $\Theta$):
+         \begin{enumerate}
+            \item le nombre d'opérations effectuées (travail) = 
+            \item la profondeur (temps parallèle minimal ou chemin critique) = 
+         \end{enumerate}
+      \item Analyser précisément en donnant un équivalent (donc  pas en notation $O$ ou $\Theta$):
+         \begin{enumerate}
+          \item l'espace mémoire requis par votre programme= 
+           \item le nombre de défauts de localité (cache) =  \\
+            NB On considère un cache de taille totale $Z$ caractères avec une taille de bloc $B$ caractères;
+            on suppose que la taille $Z$  du cache est très inférieure à $t$, mais suffisante pour contenir un grand nombre de lignes consécutives du paragraphe découpé.
+         \end{enumerate}
+   \end{enumerate}
+
+\item Pour un fichier de longueur $s$ caractères  ($s \gg Z$) dont le plus long paragraphe contient $t$ caractères, donner:
+   \begin{enumerate}
+      \item le nombre d'opérations effectuées (notation $O$ ou $\Theta$) =
+      \item la profondeur (temps parallèle minimal ou chemin critique) =
+      \item le nombre de défauts de cache =  
+    \end{enumerate}
+
+
+\item Expérimenter  votre programme sur le fichier $F$={\tt ALaRechercheDuTempsPerdu.txt} en sortie texte (pas pdf).
+Mesurer sur 10 exécutions  le temps CPU et le nombre de défauts de localité et indiquer les valeurs
+moyennes,  minimales et  maximales 
+des 10 exécutions. \\
+Indiquer la machine (nom si Ensimag; processeur et fréquence sinon)\,: \dotfill \\
+\centerline{\begin{tabular}{|c||c|c|c|} 
+   \hline
+   Valeur mesurée  & $~~~~$ Minimum $~~~~$   & $~~~~$ Maximum$~~~~$         & $~~~~$ Moyenne  $~~~~$       \\
+   \hline
+   \hline
+   $C^\star(F)$ & & & \\
+   \hline
+   Temps CPU  & & & \\
+   \hline
+   Défaut de localité  & & & \\
+   \hline
+\end{tabular}}
+
+\item La fonction {\tt mmap} projette un fichier ou un périphérique en mémoire. Ainsi on peut parcourir le fichier à partir d'un pointeur;
+on accède les octets en déréférençant le pointeur, comme un tableau. Les octets du fichier sont chargés en mémoire par blocs (pages) et seulement lorsqu'ils sont accédés.
+En utilisant {\tt mmap} (et {\tt unmmap}), peut-on diminuer le nombre de défauts de localité?   
+\begin{tabular}{lll}
+       $\square$ A/  Oui $~~~~~$
+     & $\square$ B/ Non, il reste le même $~~~~~$
+     & $\square$ C/ Non, il augmente.
+\end{tabular} \\
+Si A ou B, indiquer le nombre de défauts de localité en fonction de $Z$ et $B$ =  \\
+\textbf{Justifier brièvement (3 lignes max)\,:} \dotfill \\
+$~$ \dotfill \\
+$~$ \dotfill 
+\item 
+En UTF8, la césure douce est représentée par le caractère SHY ({\em Soft Hyphen}) de  code hexadécimal {\tt0xAD},
+affiché par le signe '-';
+en \LaTeX par la séquence '\textbackslash-'.
+Votre programme actuel ne prenant pas en compte les césures douces, il les affiche comme des '-'.
+Pour un plus bel affichage, on considère ici une extension 
+prenant en compte les césures (que l'on ne demande pas de programmer). 
+% {\bf Ce serait peut-être mieux de mettre "\\-" comme en LaTeX: David, qu'en penses-tu ?}
+Lorsqu'on insère un retour à la ligne entre deux mots séparés par une
+césure douce, un caractère moins '-' est ajouté à la fin du premier mot.  Mais si les deux mots sont sur la même ligne,
+alors ils sont affichés collés l'un à l'autre.  
+La fonction de pénalité est modifiée pour prendre en compte, outre la taille d'espace, la présence d'une césure en fin de ligne. 
+Soit $T(f)$ le temps pris par votre programme actuel sur un fichier $f$ (comportant des césures douces qui ne sont pas prises en compte).
+\\
+\textbf{Question\,:}
+expliquer clairement et brièvement comment vous adapteriez votre programme pour que le nombre d'opérations
+$T'(f)$ du nouveau programme étendu pour les césures vérifie\,:
+$T'(f) = O(1) \cdot T(f).$ \\
+\textbf{Réponse (10 lignes max)\,:} 
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill \\
+$~$\dotfill 
+\end{enumerate} 
+
+\end{document} 
+
+
+

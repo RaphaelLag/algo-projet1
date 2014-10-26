@@ -60,7 +60,9 @@ Binôme
 \noindent\begin{enumerate}
 \item QCM: A quel découpage correspond le co\^ut $\phi(i)$ ? \\
 \begin{tabular}{lll}
-       $\square$ A/ $m_0, \ldots, m_n$ 
+    
+\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}
+   $\square \checkmark$ A/ $m_0, \ldots, m_n$ 
      & $\square$ B/ $m_0, \ldots, m_{i-1}$ 
      & $\square$ C/ $m_0, \ldots, m_i$  
      \\
