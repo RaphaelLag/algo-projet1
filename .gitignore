@@ -35,3 +35,6 @@
 *.aux
 *.pdf
 *.log
+
+# vim:
+*.swp
