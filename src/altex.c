@@ -148,7 +148,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
 
                         // memoization of penalties for the current paragraph
                         struct decoupage phi_memoization [nbwords];
-                        int space_memoization [M];
+                        int* space_memoization = malloc(sizeof(int) * nbwords * nbwords);
 
                         int i;
                         // Init of the memoization array with the default value -1
@@ -156,7 +156,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 phi_memoization[i].cout = -1;
                                 phi_memoization[i].coupe = -1;
                         }
-                        for(i = 0; i < M; ++i)
+                        for(i = 0; i < nbwords * nbwords; ++i)
                                 space_memoization[i] = -1;
 
                         // Update of paragraph length with spaces' size
@@ -170,7 +170,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 // else we recursively compute the optimal jusitfication 
                                 sumval_all_paragraphs +=
                                         justify_par(0, nbwords - 1, &f_data,
-                                        tabwords, space_memoization, 
+						    tabwords, (int*)space_memoization, 
                                         (struct decoupage *)phi_memoization);
 
                                 draw_wordparagraph(outformat, tabwords,
@@ -318,40 +318,41 @@ static int justify_par(int i, int n, struct file_data* f,
                 struct decoupage* phi_memoization)
 {
         int min = INT_MAX;
-        int k = i;
+        int k_max = i;
         int aux, nbspaces;
+
+	// Compute space memoization :
+	while(k_max < n && (nbspaces = E(i, k_max, tabwords, f)) >= 0){
+		space_memoization[(n+1) * i + k_max] = nbspaces;
+		++k_max;
+	}
 
         // The paragraphe's length < a line's length: No optimisation to do
         if (E(i, n, tabwords, f) >= 0)
                 return 0;
 
         // If a word is larger than M : we truncate it 
-        if ((nbspaces = E(i, k, tabwords, f)) < 0)
+        if (space_memoization[(n+1)*i + i] < 0)
                 word_truncate_at_length(f->outformat, tabwords[i], f->M);
 
         // Computes the min penalty value :
-        do { 
-                // Computs the penalty value if necessary
-                if(space_memoization[nbspaces] == -1)
-                        space_memoization[nbspaces] = penality(nbspaces, f->N);
-                
+	int k;
+	for(k = i; k < k_max; ++k){       
                 // Computes the value of phi(k+1) if necessary
                 if (phi_memoization[k+1].cout == -1)
                         phi_memoization[k+1].cout = 
                                 justify_par(k+1, n, f, tabwords,
                                       space_memoization, phi_memoization);
                 
-                // Computes the penalty val for this configuration (from i to k)
-                aux = phi_memoization[k+1].cout + space_memoization[nbspaces];
+                // Computes the penality val for this configuration (from i to k)
+                aux = phi_memoization[k+1].cout + penality(space_memoization[(n+1) * i + k], f->N); 
                 
                 // Update of the current min penality (if necessary)
                 if (aux < min) {
                         min = aux;
                         phi_memoization[i].coupe = k+1;
                 }
-                k++;
-        } while (k < n &&
-             (nbspaces = E(i, k, tabwords, f)) >= 0);
+        } 
 
         return min;
 }
