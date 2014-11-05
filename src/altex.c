@@ -318,36 +318,28 @@ static int justify_par(int i, int n, struct file_data* f,
                 struct decoupage* phi_memoization)
 {
         int min = INT_MAX;
-        int k_max = i + 1;
-        int aux, nbspaces;
+        int k_max = i;
+        int aux;
 
-	// Compute space memoization :
-	while(k_max < n && (nbspaces = E(i, k_max, tabwords, f)) >= 0){
-		space_memoization[(n+1) * i + k_max] = nbspaces;
-		++k_max;
-	}
+        // Compute space memoization :
+        space_memoization[(n+1) * i + i] = E(i, i, tabwords, f);
+        while(++k_max < n &&
+	      (space_memoization[(n+1) * i + k_max] = 
+	       space_memoization[(n+1) * i + k_max - 1] - 
+	       (wordlength(f->outformat, tabwords[k_max]) 
+		+ f->size_separator)) >=0 );
 
-        // The paragraphe's length < a line's length: No optimisation to do
+	// The paragraphe's length < a line's length: No optimisation to do
         if (E(i, n, tabwords, f) >= 0)
                 return 0;
 
-        // If a word is larger than M : we truncate it 
-        // Compute space memoization :
-        space_memoization[(n+1) * i + i] = E(i, i, tabwords, f);//wordlength(f->outformat, tabwords[i]);
-
-        // space_memoization : nb_spaces rajoutés
-        while(k_max < n &&
-              (nbspaces = space_memoization[(n+1) * i + k_max - 1]) >=0){
-
-                space_memoization[(n+1) * i + k_max] =
-                        nbspaces -
-                        (wordlength(f->outformat, tabwords[k_max]) + f->size_separator);
-                ++k_max;
-        }
+        // If a word is larger than M : we truncate it
+        if (space_memoization[(n+1)*i + i] < 0)
+                word_truncate_at_length(f->outformat, tabwords[i], f->M);
 
         // Computes the min penalty value :
 	int k;
-	for(k = i; k < k_max; ++k){       
+	for(k = i; k < k_max; ++k){
                 // Computes the value of phi(k+1) if necessary
                 if (phi_memoization[k+1].cout == -1)
                         phi_memoization[k+1].cout = 
