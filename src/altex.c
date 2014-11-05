@@ -180,6 +180,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         //  next paragraph and we free the memory
                         par_len = 0;
                         nbwords = 0;
+			free(space_memoization);
                 }
                 free_tab(tabwords);
 
