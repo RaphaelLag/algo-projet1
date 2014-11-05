@@ -318,7 +318,7 @@ static int justify_par(int i, int n, struct file_data* f,
                 struct decoupage* phi_memoization)
 {
         int min = INT_MAX;
-        int k_max = i;
+        int k_max = i + 1;
         int aux, nbspaces;
 
 	// Compute space memoization :
@@ -332,8 +332,18 @@ static int justify_par(int i, int n, struct file_data* f,
                 return 0;
 
         // If a word is larger than M : we truncate it 
-        if (space_memoization[(n+1)*i + i] < 0)
-                word_truncate_at_length(f->outformat, tabwords[i], f->M);
+        // Compute space memoization :
+        space_memoization[(n+1) * i + i] = E(i, i, tabwords, f);//wordlength(f->outformat, tabwords[i]);
+
+        // space_memoization : nb_spaces rajoutés
+        while(k_max < n &&
+              (nbspaces = space_memoization[(n+1) * i + k_max - 1]) >=0){
+
+                space_memoization[(n+1) * i + k_max] =
+                        nbspaces -
+                        (wordlength(f->outformat, tabwords[k_max]) + f->size_separator);
+                ++k_max;
+        }
 
         // Computes the min penalty value :
 	int k;
