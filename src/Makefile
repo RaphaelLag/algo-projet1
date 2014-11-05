@@ -1,4 +1,4 @@
-CC=gcc -g -Wall
+CC=gcc -O3 -g -Wall
 
 all: altex
 
