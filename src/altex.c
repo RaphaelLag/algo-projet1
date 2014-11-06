@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <math.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <locale.h>
 #include <limits.h>
 #include <unistd.h>
@@ -34,171 +35,121 @@ struct file_data{
         long size_separator;      /* min size of the white space between 
                                    * two consecutive words on a line 
                                    */
+        struct stream* outformat; // output stream
+};
+
+struct paragraph_data{
+        char** tab_words;         // array containing the paragraph's words.
         size_t* words_L;          /* Array containing the size of each words
                                    * in the paragraphe.
                                    */
-        struct stream* outformat; // output stream
 };
+
+/**
+ * Reads the file and draw it justified.
+ * @param in input file to justify
+ * @param len max size of the text
+ * @param outformat output stream (txt or pdf)
+ * @param M (line size in units)
+ * @param N coeff such that penalty = #spaces^N 
+ * @return penalty value of the biggest paragraph.
+ */
+long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, 
+        unsigned N) ;
+
+/**
+ * Computes the optimal justification of a parapgraph according to the following
+ * - Algorithm in its recursive form : 
+ *  ϕ = {
+ *        0 if E(i,n) >= 0
+ *        min[k>=i; E(i,k)>=0] ( ϕ(k+1) + N(E(i,k))) else
+ *      }
+ * 
+ * @param i is the index of the first word of the paragraph to justify
+ * @param n is the index of the last word of the paragraph to justify
+ * @param f contains meta-data about the file (see file_data for more details)
+ * @param p contains meta-data about the paragraph (see paragraph_data)
+ * @param phi_mem  memorises all the values of phi
+ * @param space_mem memorises the values of the spaces added
+ * @param return the cost for an optimal alignment for the parapgraph considered 
+ * @return Cost of the justification 
+ */
+static int justify_par(int i, int n, struct file_data* f, 
+        struct paragraph_data* p, int* space_mem, struct decoupage* phi_mem);
+
+/** ej = E(i;k) = M - Δ(i;k)
+ * 
+ * Computes the space size to add in order to make a line composed of the words 
+ * from the ith word till the nth word have a total size of M.
+ * @param i is the index of the first word of the paragraph
+ * @param k is the index of the last word of the paragraph
+ * @param f contains meta-data about the file (see file_data for more details)
+ * @param p contains meta-data about the paragraph (see paragraph_data)
+ * @return return the size (in units) to add
+ */
+static int E(int i, int k, struct file_data* f, struct paragraph_data* p);
+
+/**  Delta(i;k) = L(mk) + Sum[j from i to k-1]( L(mj) + μ )
+ * 
+ * Returns the size(in units) of the words and the minimum spaces between words 
+ * for the ith word till the nth word.
+ * @param i is the index of the first word of the paragraph
+ * @param k is the index of the last word of the paragraph
+ * @param f contains meta-data about the file (see file_data for more details)
+ * @param p contains meta-data about the paragraph (see paragraph_data)
+ * @return the size (in units) of the words between the indexes i and n 
+ */
+static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p);
+
+/**
+ * This functions prints the paragraph justified.
+ * @param outformat is the output stream to consider
+ * @param p contains meta-data about the paragraph (see paragraph_data)
+ * @param phi_mem memorises all the values of phi
+ * @param nb_words number of words of the paragraph
+ */
+static void draw_wordparagraph(struct stream* outformat, struct paragraph_data* p, 
+                struct decoupage* phi_mem, int nb_words);
 
 /**
  * free the memory allocated to tab
  * @param tab: array of string we want to deallocate
  */
-static void free_tab(char** tab);
-
-// TODO : replace recursive algorithm by a an iterative one.
-// TODO: memoize values of penality(nbspaces, N) in justify_par
+static void free_tab_words(char** tab);
 
 /**
- * Computes the optimal justification of a parapgraph according to the following
- * algorithm: 
- * L (i,k) = L(m_k) + sum(L(m_j) + mu) (j=1,j<=k-1)
- * E(i,k) = M - L(i,k);
- * phi(i) {
- *  if (E(i,n) >= 0) return 0;
- *  min = M
- *  k = 0
- *  while (k<n && E(i,k)>=0) {  
- *      if (aux = phi(k+1) + N(E(i,k)) < min) min = aux;
- *      k++;
- *  }
- *      
- *  return min;
- * 
- * @param i: we compute from the word at the index i of tabwords
- * @param n: we compute till the word at the index n of tabwords
- * @param f: contains meta-data about the file (see file_data for more details)
- * @param tabwords: array of the words in the paragraph considered
- * @param phi_memoization : memorises all the phi values
- * @param space_memoization: memorises the penaly values
- * @param return the cost for an optimal alignment for the parapgraph considered 
+ * free the memory allocated to the pragraph_data.
+ * Warning, only free the content of the structure.
+ * @param p structure for wich we want to free the content
  */
-static int justify_par(int i, int n, struct file_data* f, char** tabwords, size_t* words_L,
-                int* space_memoization, struct decoupage* phi_memoization);
+static void free_paragraph_data(struct paragraph_data* p);
 
 /**
- * Computes the space size to add in order to make a line composed of the words 
- * from the ith word till the nth word have a total size of M.
- * @param i: we compute from the word at the index i of tabwords
- * @param n: we compute till the word at the index n of tabwords
- * @param f: contains meta-data about the file (see file_data for more details)
- * @param tabwords: array of the words in the paragraph considered
- * @param return the size (in units) to add
+ * prints an error message and exits.
  */
-static int E(int i, int k, char** tabwords, struct file_data* f);
+static void allocation_error(void);
 
 /**
- * Returns the size(in units) of the words and the minimum spaces between words 
- * for the ith word till the nth word.
- * @param i: we compute from the word at the index i of tabwords
- * @param n: we compute till the word at the index n of tabwords
- * @param tabwords: array of the words in the paragraph considered
- * @param f: contains meta-data about the file (see file_data for more details)
- * @param return the size (in units) of the words between the indexes i and n 
+ * Secured malloc that exits in case of failure.
+ * @param size size of the memory to allocate
+ * @return allocated memory.
  */
-static int Delta(int i, int k, char** tabwords, struct file_data* f);
+static void *s_malloc(size_t size);
 
-/** draw_wordparagraph displays optimal lines of words
- * @param outformat : the output stream to consider
- * @param tabwords: array of words
- * @param phi_memoization: structure used to get the index for where to make a carriage return
+/**
+ * allocates memory for an array of nmemb elements of size bytes each and 
+ * returns a pointer to the allocated memory.
+ * @param nmemb is the number of elements to allocate
+ * @param size is the size of an element
+ * @return a pointer to the allocated memory.
  */
-static void draw_wordparagraph(struct stream* outformat, char** tabwords, struct decoupage* phi_memoization, int nbwords);
+static void *s_calloc(size_t nmemb, size_t size);
+
 
 
 /* ************************************************************************** */
-/* ****************************** Altex & Main ****************************** */
+/* ********************************** Main ********************************** */
 /* ************************************************************************** */
-
-long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M, unsigned N) ;
-
-long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
-                unsigned N)
-{
-        char* buffer = (char*) calloc(len+1, sizeof(char) ) ;  // Preallocated buffer, large enough to store any word...
-        size_t buffer_size = len ;
-        struct parser p_in;
-        init_parser(in, &p_in) ;
-        long maxval_all_paragraphs = 0 ;
-        long sumval_all_paragraphs = 0 ;
-        int endofile = 0;
-        char** tabwords = (char** ) calloc(len, sizeof(char*));
-        int nbwords = 0;
-        long par_len = 0;
-
-        // We read each paragraph from the first one
-        while (!endofile) { 
-                size_t* words_L = malloc(len * sizeof(size_t));
-                int is_paragraph_end = 0 ;
-                struct file_data f_data = {M, N, sizeSeparator(outformat), words_L, outformat};
-                // All words in the paragraph are stored in tabwords. 
-                while ( !is_paragraph_end ) { 
-                        // Size of the word if any
-                        size_t n = read_word( &p_in, &is_paragraph_end, buffer, buffer_size ) ; 
-                        if  (n==0) { 
-                                endofile = 1 ;
-                                break ; 
-                        } else {
-                                words_L[nbwords] = wordlength(outformat, buffer); 	       
-                                // Update of paragraph length with the word's size.
-                                par_len +=words_L[nbwords];
-                                // We add the word to the array. 
-                                tabwords[nbwords] = (char*) calloc(n+1, sizeof(char));
-                                memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
-                                // We memoize the word_length value.
-
-                                nbwords++;
-                        }
-                }
-                if (nbwords > 0) {
-
-                        // memoization of penalties for the current paragraph
-                        struct decoupage phi_memoization [nbwords];
-                        int* space_memoization = malloc(sizeof(int) * nbwords);
-
-                        int i;
-                        // Init of the memoization array with the default value -1
-                        for (i = 0; i < nbwords; i++) {
-                                phi_memoization[i].cout = -1;
-                                phi_memoization[i].coupe = -1;
-                        }
-                        for(i = 0; i < nbwords; ++i)
-                                space_memoization[i] = -1;
-
-                        // Update of paragraph length with spaces' size
-                        par_len += f_data.size_separator * (nbwords - 1);
-
-                        // Case when the paragraph's length is less than M (line size)
-                        if (par_len < M) {
-                                // Nothing to do, we write the paragraph in the output
-                                draw_wordline(outformat, nbwords, tabwords, 1);
-                        } else {
-                                // else we recursively compute the optimal jusitfication 
-                                sumval_all_paragraphs +=
-                                        justify_par(0, nbwords - 1, &f_data,
-                                                        tabwords, words_L,(int*)space_memoization, 
-                                                        (struct decoupage *)phi_memoization);
-
-                                draw_wordparagraph(outformat, tabwords,
-                                                (struct decoupage*)phi_memoization, nbwords);
-                        }
-                        //  We re-initialize the variables we need for the 
-                        //  next paragraph and we free the memory
-                        par_len = 0;
-                        nbwords = 0;
-                        free(space_memoization);
-                }
-                free(words_L);
-                free_tab(tabwords);
-
-        }
-        free(tabwords);
-        free(buffer) ;
-        fprintf(stderr, "\n#@alignment_cost:MAX=%ld;SUM=%ld\n",
-                        maxval_all_paragraphs, sumval_all_paragraphs);
-
-        return maxval_all_paragraphs;
-}
 
 static void usage(char * prog) {
         fprintf(stderr, "usage: %s -i input_file -o output_file -f format [-m M]\n", prog);
@@ -220,7 +171,7 @@ int main(int argc, char *argv[] ) {
         //Command line parsing
         char c;
 
-        long M = 40 ; // 40
+        long M = 80;
         char* input_file = "texte-test-court.txt"; //"test_text.txt";
         char* output_file = 0;
         char* format = 0;
@@ -303,28 +254,104 @@ int main(int argc, char *argv[] ) {
         return 0 ;
 }
 
+
 /* ************************************************************************** */
-/* *************************** Utility Functions **************************** */
+/* *********************** Algorithmic Functions **************************** */
 /* ************************************************************************** */
 
-static void free_tab(char** tab) {
-        int i;
-        for (i = 0; tab[i] != NULL; i++) {
-                free(tab[i]);
-                tab[i] = NULL;
+long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
+                unsigned N)
+{
+        // Variables used to parse the file :
+        char* buffer = (char*) s_calloc(len+1, sizeof(char) ) ;  
+        size_t buffer_size = len ;
+        struct parser p_in;
+        init_parser(in, &p_in) ;
+
+        // Meta-data about justification efficiency : 
+        long maxval_all_paragraphs = 0 ;
+        long sumval_all_paragraphs = 0 ;
+        // Meta-data about the file :
+        struct file_data f_data = {M, N, sizeSeparator(outformat), outformat};
+        
+        // We read each paragraph from the first one
+        int endofile = 0;
+        while (!endofile) { 
+                // Variables used to memorize a paragraph :
+                char** tab_words = (char** ) s_calloc(len, sizeof(char*));
+                int nbwords = 0;
+                long par_len = 0;
+                // Init of structures stocking meta-data about file and parag
+                size_t* words_L = (size_t*) s_malloc(len * sizeof(size_t));
+                struct paragraph_data p_data = {tab_words, words_L};
+                
+                // Reads the paragraph & init meta-data
+                int is_paragraph_end = 0 ;
+                while ( !is_paragraph_end ) { 
+                        // Reading of a word :
+                        size_t n = read_word( &p_in, &is_paragraph_end, buffer, 
+                                buffer_size ) ; 
+                        
+                        if  (n==0) { 
+                                endofile = 1 ;
+                                break ; 
+                        } else {
+                                // We memoize the word_length value.
+                                words_L[nbwords] = wordlength(outformat, buffer); 	       
+                                // Update of paragraph length with word's size.
+                                par_len += words_L[nbwords];
+                                // We add the word to the array. 
+                                tab_words[nbwords] = (char*) s_calloc(n+1, sizeof(char));
+                                memcpy(tab_words[nbwords], buffer, strlen(buffer) + 1);
+                                nbwords++;
+                        }
+                }
+                if (nbwords > 0) {
+                        // memoization of penalties for the current paragraph
+                        struct decoupage phi_mem [nbwords];
+                        int space_mem[nbwords];
+                        
+                        // Init of the memoization array with the default val -1
+                        int i;
+                        for (i = 0; i < nbwords; i++) {
+                                phi_mem[i].cout = -1;
+                                phi_mem[i].coupe = -1;
+                        }
+                        
+                        // Update of paragraph length with spaces' size
+                        par_len += f_data.size_separator * (nbwords - 1);
+                
+                        // If the paragraph holds on a line, we just draw it
+                        if (par_len < M) {
+                                draw_wordline(outformat, nbwords, tab_words, 1);
+                        } else {
+                                // Else we compute the optimal jusitfication
+                                sumval_all_paragraphs +=
+                                        justify_par(0, nbwords - 1, &f_data,
+                                        &p_data, space_mem, 
+                                        phi_mem);
+                                // We draw the pargraph justified.
+                                draw_wordparagraph(outformat, &p_data,
+                                        phi_mem, nbwords);
+                        }
+                        
+                        par_len = 0;
+                        nbwords = 0;
+                }
+                free_paragraph_data(&p_data);
         }
+        free(buffer) ;
+        fprintf(stderr, "\n#@alignment_cost:MAX=%ld;SUM=%ld\n",
+        maxval_all_paragraphs, sumval_all_paragraphs);
+
+        return maxval_all_paragraphs;
 }
 
-/*
-   ϕ = {
-   0 if E(i,n) >= 0
-   min[k>=i; E(i,k)>=0] ( ϕ(k+1) + N(E(i,k))) else
-   }
-   */
 static int justify_par(int i, int n, struct file_data* f,
-                char** tabwords, size_t* words_L, int* space_memoization,
-                struct decoupage* phi_memoization)
+        struct paragraph_data* p, int* space_mem, 
+        struct decoupage* phi_mem)
 {
+        
         int debut = i;
         int min;
         for(i = n; i >= debut; --i){
@@ -332,82 +359,119 @@ static int justify_par(int i, int n, struct file_data* f,
                 int k_max = i;
                 int aux;
 
+                // Computes space memoization of the 1st word of the paragraph :
+                space_mem[i] = E(i, i, f, p);
 
-
-                // Compute space memoization :
-                // TODO :remplacer par un M - words_L
-                space_memoization[i] = E(i, i, tabwords, f);
-                // TODO : mettre au dessus à cause de la taille du mot ...
-                // If a word is larger than M : we truncate it and modify its size in memory
-                // TODO: vérifier je ne comprends pas ... Pas possible si ?
-                if (space_memoization[i] < 0){
-                        word_truncate_at_length(f->outformat, tabwords[i], f->M);
-                        words_L[i] = f->M;
+                // We truncate words larger than M (and update meta-data).
+                if (space_mem[i] < 0){
+                        word_truncate_at_length(f->outformat, p->tab_words[i], f->M);
+                        p->words_L[i] = f->M;
                         min = f->M;
-                        phi_memoization[i].cout = min;
+                        phi_mem[i].cout = min;
                         continue;
                 }
+
+                // Computes space memoization for the rest of the paragraph :
                 while(++k_max <= n &&
-                                (space_memoization[k_max] = 
-                                 space_memoization[k_max - 1] - 
-                                 (words_L[k_max]	+ f->size_separator)) >=0 );
-                //		(	wordlength(f->outformat, tabwords[k_max])	+ f->size_separator)) >=0 ); 	       
+                                (space_mem[k_max] = 
+                                 space_mem[k_max - 1] - 
+                                 (p->words_L[k_max] + f->size_separator)) >=0 );
 
-
-                // The paragraphe's length < a line's length: No optimisation to do
-                // TODo :remplacer par f->M - words_L ou paragraphe length
+                // The paragraphe holds on a line : No justification to do
                 if (k_max == n+1){
                         min = 0;
-                        phi_memoization[i].cout = min;
+                        phi_mem[i].cout = min;
                         continue;
                 }
-                // Computes the min penalty value :
+
+                // Computes the min penalty value (between all possible cuts)
                 int k;
                 for(k = i; k < k_max; ++k){
-                        // Computes the penality val for this configuration (from i to k)
-                        aux = phi_memoization[k+1].cout + penality(space_memoization[k], f->N); 
+                        // Computes the penality val for this cut (i to k)
+                        aux = phi_mem[k+1].cout + penality(space_mem[k], f->N); 
 
-                        // Update of the current min penality (if necessary)
+                        // Updates the current min penality (if necessary)
                         if (aux < min) {
                                 min = aux;
-                                phi_memoization[i].cout = min;
-                                phi_memoization[i].coupe = k+1;
+                                phi_mem[i].cout = min;
+                                phi_mem[i].coupe = k+1;
                         }
                 } 
         }
         return min;
 }
 
-/*
-   ej = E(i;k) = M - Δ(i;k)
-   */
-static int E(int i, int k, char** tabwords, struct file_data* f)
+static int E(int i, int k, struct file_data* f, struct paragraph_data* p)
 {
-        return (f->M - Delta(i, k, tabwords, f));
+        return (f->M - Delta(i, k, f, p));
 }
 
-/*
-   Delta(i;k) = L(mk) + Sum[j from i to k-1]( L(mj) + μ )
-   */
-static int Delta(int i, int k, char** tabwords, struct file_data* f)
+static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p)
 {
-        //Check erreur bizarre ligne suivante avec indice k
-        int words_n_spaces_length = f->words_L[i];
+        // Counts the size of the first word:
+        int words_n_spaces_length = p->words_L[i];
         int j;
+        // Adds the size of the other words + spaces (1 space/word)
         for (j = i + 1; j <= k; j++) {
-                words_n_spaces_length += f->words_L[j] + f->size_separator;
+                words_n_spaces_length += p->words_L[j] + f->size_separator;
         }
         return words_n_spaces_length;
 }
 
-static void draw_wordparagraph(struct stream* outformat, char** tabwords, 
-                struct decoupage* phi_memoization, int nbwords)
+static void draw_wordparagraph(struct stream* outformat, struct paragraph_data* p, 
+                struct decoupage* phi_mem, int nb_words)
 {
         int i = 0;
-        while ((phi_memoization[i].coupe) != -1)
+        while ((phi_mem[i].coupe) != -1)
         {
-                draw_wordline(outformat, phi_memoization[i].coupe - i, tabwords+i, 0);
-                i = phi_memoization[i].coupe;
+                draw_wordline(outformat, phi_mem[i].coupe - i, p->tab_words+i, 0);
+                i = phi_mem[i].coupe;
         }
-        draw_wordline(outformat, nbwords - i, tabwords+i, 1);
+        draw_wordline(outformat, nb_words - i, p->tab_words+i, 1);
 }
+
+
+/* ************************************************************************** */
+/* *********************** Utility Memory Functions ************************* */
+/* ************************************************************************** */
+
+static void allocation_error(void)
+{
+	errno = ENOMEM;
+	perror(0);
+        exit(EXIT_FAILURE);
+}
+
+static void *s_malloc(size_t size)
+{
+	void *mem = malloc(size);
+	if (!mem)
+                allocation_error();
+	return mem;
+}
+
+static void *s_calloc(size_t nmemb, size_t size)
+{
+	void *mem = calloc(nmemb, size);
+	if (!mem)
+                allocation_error();
+	return mem;
+}
+
+static void free_tab_words(char** tab) 
+{
+        int i;
+        // Free the strings in the tab :
+        for (i = 0; tab[i] != NULL; i++) {
+                free(tab[i]);
+                tab[i] = NULL;
+        }
+        free(tab);
+
+}
+
+static void free_paragraph_data(struct paragraph_data* p)
+{
+        free_tab_words(p->tab_words);
+        free(p->words_L);
+};
