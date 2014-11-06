@@ -1,3 +1,5 @@
 #!/bin/sh
 make
-./altex < texte-test-court.txt -m 40
+./altex -i texte-test-court.txt -o texte-test-court.txt.40 -f txt  -m 40
+
+

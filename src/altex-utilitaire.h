@@ -104,7 +104,7 @@ int word_truncate_at_length(struct stream *f, char* w, long length) ;
  * @param f : the output stream to consider
  * @param nbwords: number of words in 'tabwords'
  * @param tabwords: array of words
- * @param end_of_pragraph: if true the line is not justified and a the paragraph is ended
+ * @param end_of_pragraph: if true the line is not justified and the paragraph is ended.
  */
 void draw_wordline(struct stream *f, int nbwords, char** tabwords, int end_of_pragraph);
 

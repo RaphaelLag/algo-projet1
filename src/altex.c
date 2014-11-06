@@ -280,7 +280,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                 // Variables used to memorize a paragraph :
                 char** tab_words = (char** ) s_calloc(len, sizeof(char*));
                 int nbwords = 0;
-                long par_len = 0;
+                unsigned long par_len = 0;
                 // Init of structures stocking meta-data about file and parag
                 size_t* words_L = (size_t*) s_malloc(len * sizeof(size_t));
                 struct paragraph_data p_data = {tab_words, words_L};

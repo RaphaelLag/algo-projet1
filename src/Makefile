@@ -1,4 +1,4 @@
-CC=gcc -O3 -g -Wall
+CC=gcc -O3 -g -Wall -Wextra -std=gnu99
 
 all: altex
 
