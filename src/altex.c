@@ -269,7 +269,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
         init_parser(in, &p_in) ;
 
         // Meta-data about justification efficiency : 
-        long maxval_all_paragraphs = 0 ;
+        long maxval_all_paragraphs = -1 ;
         long sumval_all_paragraphs = 0 ;
         // Meta-data about the file :
         struct file_data f_data = {M, N, sizeSeparator(outformat), outformat};
@@ -326,10 +326,15 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 draw_wordline(outformat, nbwords, tab_words, 1);
                         } else {
                                 // Else we compute the optimal jusitfication
-                                sumval_all_paragraphs +=
+                                int32_t parag_cost =
                                         justify_par(0, nbwords - 1, &f_data,
                                         &p_data, space_mem, 
                                         phi_mem);
+                                // Uodate data about justification performance:
+                                sumval_all_paragraphs += parag_cost;
+                                if(parag_cost > maxval_all_paragraphs ||
+                                        maxval_all_paragraphs == -1)
+                                        maxval_all_paragraphs = parag_cost;
                                 // We draw the pargraph justified.
                                 draw_wordparagraph(outformat, &p_data,
                                         phi_mem, nbwords);
