@@ -333,23 +333,10 @@ static int justify_par(int i, int n, struct file_data* f,
                 int aux;
 
 
-                // The paragraphe's length < a line's length: No optimisation to do
-                // TODo :remplacer par f->M - words_L ou paragraphe length
-                if (E(i, n, tabwords, f) >= 0){
-                        min = 0;
-                        phi_memoization[i].cout = min;
-                        continue;
-                }
 
                 // Compute space memoization :
                 // TODO :remplacer par un M - words_L
                 space_memoization[i] = E(i, i, tabwords, f);
-                while(++k_max < n &&
-                                (space_memoization[k_max] = 
-                                 space_memoization[k_max - 1] - 
-                                 (words_L[k_max]	+ f->size_separator)) >=0 );
-                //		(	wordlength(f->outformat, tabwords[k_max])	+ f->size_separator)) >=0 ); 	       
-
                 // TODO : mettre au dessus à cause de la taille du mot ...
                 // If a word is larger than M : we truncate it and modify its size in memory
                 // TODO: vérifier je ne comprends pas ... Pas possible si ?
@@ -360,7 +347,20 @@ static int justify_par(int i, int n, struct file_data* f,
                         phi_memoization[i].cout = min;
                         continue;
                 }
+                while(++k_max <= n &&
+                                (space_memoization[k_max] = 
+                                 space_memoization[k_max - 1] - 
+                                 (words_L[k_max]	+ f->size_separator)) >=0 );
+                //		(	wordlength(f->outformat, tabwords[k_max])	+ f->size_separator)) >=0 ); 	       
 
+
+                // The paragraphe's length < a line's length: No optimisation to do
+                // TODo :remplacer par f->M - words_L ou paragraphe length
+                if (k_max == n+1){
+                        min = 0;
+                        phi_memoization[i].cout = min;
+                        continue;
+                }
                 // Computes the min penalty value :
                 int k;
                 for(k = i; k < k_max; ++k){
