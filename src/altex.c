@@ -34,9 +34,9 @@ struct file_data{
         long size_separator;      /* min size of the white space between 
                                    * two consecutive words on a line 
                                    */
-	size_t* words_L;          /* Array containing the size of each words
-				   * in the paragraphe.
-				   */
+        size_t* words_L;          /* Array containing the size of each words
+                                   * in the paragraphe.
+                                   */
         struct stream* outformat; // output stream
 };
 
@@ -74,7 +74,7 @@ static void free_tab(char** tab);
  * @param return the cost for an optimal alignment for the parapgraph considered 
  */
 static int justify_par(int i, int n, struct file_data* f, char** tabwords, size_t* words_L,
-        int* space_memoization, struct decoupage* phi_memoization);
+                int* space_memoization, struct decoupage* phi_memoization);
 
 /**
  * Computes the space size to add in order to make a line composed of the words 
@@ -125,12 +125,12 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
         char** tabwords = (char** ) calloc(len, sizeof(char*));
         int nbwords = 0;
         long par_len = 0;
-        
+
         // We read each paragraph from the first one
         while (!endofile) { 
-		size_t* words_L = malloc(len * sizeof(size_t));
+                size_t* words_L = malloc(len * sizeof(size_t));
                 int is_paragraph_end = 0 ;
-		struct file_data f_data = {M, N, sizeSeparator(outformat), words_L, outformat};
+                struct file_data f_data = {M, N, sizeSeparator(outformat), words_L, outformat};
                 // All words in the paragraph are stored in tabwords. 
                 while ( !is_paragraph_end ) { 
                         // Size of the word if any
@@ -139,13 +139,13 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 endofile = 1 ;
                                 break ; 
                         } else {
+                                words_L[nbwords] = wordlength(outformat, buffer); 	       
                                 // Update of paragraph length with the word's size.
-                                par_len += wordlength(outformat, buffer);
+                                par_len +=words_L[nbwords];
                                 // We add the word to the array. 
                                 tabwords[nbwords] = (char*) calloc(n+1, sizeof(char));
                                 memcpy(tabwords[nbwords], buffer, strlen(buffer) + 1);
-				// We memoize the word_length value.
-				words_L[nbwords] = n;
+                                // We memoize the word_length value.
 
                                 nbwords++;
                         }
@@ -176,19 +176,19 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 // else we recursively compute the optimal jusitfication 
                                 sumval_all_paragraphs +=
                                         justify_par(0, nbwords - 1, &f_data,
-						    tabwords, words_L,(int*)space_memoization, 
-                                        (struct decoupage *)phi_memoization);
+                                                        tabwords, words_L,(int*)space_memoization, 
+                                                        (struct decoupage *)phi_memoization);
 
                                 draw_wordparagraph(outformat, tabwords,
-                                        (struct decoupage*)phi_memoization, nbwords);
+                                                (struct decoupage*)phi_memoization, nbwords);
                         }
                         //  We re-initialize the variables we need for the 
                         //  next paragraph and we free the memory
                         par_len = 0;
                         nbwords = 0;
-			free(space_memoization);
+                        free(space_memoization);
                 }
-		free(words_L);
+                free(words_L);
                 free_tab(tabwords);
 
         }
@@ -228,21 +228,21 @@ int main(int argc, char *argv[] ) {
         while ((c = getopt(argc , argv, "i:o:f:m:")) != -1)
         {
                 switch (c) {
-                case 'i':
-                        input_file = optarg;
-                        break;
-                case 'o':
-                        output_file = optarg;
-                        break;
-                case 'f':
-                        format = optarg;
-                        break;
-                case 'm':
-                        M = atoi(optarg);
-                        break;
-                case '?':
-                        usage(argv[0]);
-                        break;
+                        case 'i':
+                                input_file = optarg;
+                                break;
+                        case 'o':
+                                output_file = optarg;
+                                break;
+                        case 'f':
+                                format = optarg;
+                                break;
+                        case 'm':
+                                M = atoi(optarg);
+                                break;
+                        case '?':
+                                usage(argv[0]);
+                                break;
                 }
         }
 
@@ -276,18 +276,18 @@ int main(int argc, char *argv[] ) {
         else {
                 switch(format[0])
                 {
-                case 't': //"text"
-                        outstream = init_stream(output_file, 0, M);
-                        break;
-                case 's': //"serif"
-                        outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
-                        break;
-                case 'h': //"hand"
-                        outstream = init_stream(output_file, "daniel.ttf", M);
-                        break;
-                default:
-                        fprintf( stderr, "Unrecognized format.\n");
-                        return 1;
+                        case 't': //"text"
+                                outstream = init_stream(output_file, 0, M);
+                                break;
+                        case 's': //"serif"
+                                outstream = init_stream(output_file, "DejaVuSerif.ttf", M);
+                                break;
+                        case 'h': //"hand"
+                                outstream = init_stream(output_file, "daniel.ttf", M);
+                                break;
+                        default:
+                                fprintf( stderr, "Unrecognized format.\n");
+                                return 1;
                 }
         }
 
@@ -299,7 +299,7 @@ int main(int argc, char *argv[] ) {
         //free and flush outstream
         free_format(outstream);
         fclose(f);
-                                                
+
         return 0 ;
 }
 
@@ -320,67 +320,67 @@ static void free_tab(char** tab) {
    0 if E(i,n) >= 0
    min[k>=i; E(i,k)>=0] ( ϕ(k+1) + N(E(i,k))) else
    }
-*/
+   */
 static int justify_par(int i, int n, struct file_data* f,
-		       char** tabwords, size_t* words_L, int* space_memoization,
+                char** tabwords, size_t* words_L, int* space_memoization,
                 struct decoupage* phi_memoization)
 {
-	int debut = i;
-	int min;
-	for(i = n; i >= debut; --i){
-		min = INT_MAX;
-		int k_max = i;
-		int aux;
+        int debut = i;
+        int min;
+        for(i = n; i >= debut; --i){
+                min = INT_MAX;
+                int k_max = i;
+                int aux;
 
 
-		// The paragraphe's length < a line's length: No optimisation to do
-		// TODo :remplacer par f->M - words_L ou paragraphe length
-		if (E(i, n, tabwords, f) >= 0){
-			min = 0;
-			phi_memoization[i].cout = min;
-			continue;
-		}
-	
-		// Compute space memoization :
-		// TODO :remplacer par un M - words_L
-		space_memoization[i] = E(i, i, tabwords, f);
-		while(++k_max < n &&
-		      (space_memoization[k_max] = 
-		       space_memoization[k_max - 1] - 
-		       (words_L[k_max]	+ f->size_separator)) >=0 );
-		       			//(wordlength(f->outformat, tabwords[k_max]) 	       
+                // The paragraphe's length < a line's length: No optimisation to do
+                // TODo :remplacer par f->M - words_L ou paragraphe length
+                if (E(i, n, tabwords, f) >= 0){
+                        min = 0;
+                        phi_memoization[i].cout = min;
+                        continue;
+                }
 
-		// TODO : mettre au dessus à cause de la taille du mot ...
-		// If a word is larger than M : we truncate it and modify its size in memory
-		// TODO: vérifier je ne comprends pas ... Pas possible si ?
-		if (space_memoization[i] < 0){
-			word_truncate_at_length(f->outformat, tabwords[i], f->M);
-			words_L[i] = f->M;
-			min = f->M;
-			phi_memoization[i].cout = min;
-			continue;
-		}
+                // Compute space memoization :
+                // TODO :remplacer par un M - words_L
+                space_memoization[i] = E(i, i, tabwords, f);
+                while(++k_max < n &&
+                                (space_memoization[k_max] = 
+                                 space_memoization[k_max - 1] - 
+                                 (words_L[k_max]	+ f->size_separator)) >=0 );
+                //		(	wordlength(f->outformat, tabwords[k_max])	+ f->size_separator)) >=0 ); 	       
 
-		// Computes the min penalty value :
-		int k;
-		for(k = i; k < k_max; ++k){
-			// Computes the penality val for this configuration (from i to k)
-			aux = phi_memoization[k+1].cout + penality(space_memoization[k], f->N); 
-                
-			// Update of the current min penality (if necessary)
-			if (aux < min) {
-				min = aux;
-				phi_memoization[i].cout = min;
-				phi_memoization[i].coupe = k+1;
-			}
-		} 
-	}
+                // TODO : mettre au dessus à cause de la taille du mot ...
+                // If a word is larger than M : we truncate it and modify its size in memory
+                // TODO: vérifier je ne comprends pas ... Pas possible si ?
+                if (space_memoization[i] < 0){
+                        word_truncate_at_length(f->outformat, tabwords[i], f->M);
+                        words_L[i] = f->M;
+                        min = f->M;
+                        phi_memoization[i].cout = min;
+                        continue;
+                }
+
+                // Computes the min penalty value :
+                int k;
+                for(k = i; k < k_max; ++k){
+                        // Computes the penality val for this configuration (from i to k)
+                        aux = phi_memoization[k+1].cout + penality(space_memoization[k], f->N); 
+
+                        // Update of the current min penality (if necessary)
+                        if (aux < min) {
+                                min = aux;
+                                phi_memoization[i].cout = min;
+                                phi_memoization[i].coupe = k+1;
+                        }
+                } 
+        }
         return min;
 }
 
 /*
    ej = E(i;k) = M - Δ(i;k)
-*/
+   */
 static int E(int i, int k, char** tabwords, struct file_data* f)
 {
         return (f->M - Delta(i, k, tabwords, f));
@@ -388,7 +388,7 @@ static int E(int i, int k, char** tabwords, struct file_data* f)
 
 /*
    Delta(i;k) = L(mk) + Sum[j from i to k-1]( L(mj) + μ )
-*/
+   */
 static int Delta(int i, int k, char** tabwords, struct file_data* f)
 {
         //Check erreur bizarre ligne suivante avec indice k
@@ -401,7 +401,7 @@ static int Delta(int i, int k, char** tabwords, struct file_data* f)
 }
 
 static void draw_wordparagraph(struct stream* outformat, char** tabwords, 
-        struct decoupage* phi_memoization, int nbwords)
+                struct decoupage* phi_memoization, int nbwords)
 {
         int i = 0;
         while ((phi_memoization[i].coupe) != -1)
