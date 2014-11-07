@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <locale.h>
 #include <limits.h>
@@ -65,12 +66,11 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
  * @param f contains meta-data about the file (see file_data for more details)
  * @param p contains meta-data about the paragraph (see paragraph_data)
  * @param phi_mem  memorises all the values of phi
- * @param space_mem memorises the values of the spaces added
  * @param return the cost for an optimal alignment for the parapgraph considered 
  * @return Cost of the justification 
  */
 static int justify_par(int i, int n, struct file_data* f, 
-        struct paragraph_data* p, int* space_mem, struct decoupage* phi_mem);
+        struct paragraph_data* p, struct decoupage* phi_mem);
 
 /** ej = E(i;k) = M - Δ(i;k)
  * 
@@ -95,6 +95,16 @@ static int E(int i, int k, struct file_data* f, struct paragraph_data* p);
  * @return the size (in units) of the words between the indexes i and n 
  */
 static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p);
+
+/**
+ * @param i is the index of the first word of the paragraph
+ * @param k is the index of the last word of the paragraph
+ * @param f contains meta-data about the file (see file_data for more details)
+ * @param p contains meta-data about the paragraph (see paragraph_data)
+ * @return true if the pargraph given as parameter holds on a line, else false.
+ */
+static bool paragraph_holds_on_a_line(int i, int k, struct file_data* f, 
+        struct paragraph_data* p);
 
 /**
  * This functions prints the paragraph justified.
@@ -302,9 +312,8 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                         }
                 }
                 if (nbwords > 0) {
-                        // memoization of penalties for the current paragraph
+                        // memoization of phi
                         struct decoupage phi_mem [nbwords];
-                        int space_mem[nbwords];
                         
                         // Init of the memoization array with the default val -1
                         int i;
@@ -323,8 +332,7 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 // Else we compute the optimal jusitfication
                                 int32_t parag_cost =
                                         justify_par(0, nbwords - 1, &f_data,
-                                        &p_data, space_mem, 
-                                        phi_mem);
+                                        &p_data, phi_mem);
                                 // Uodate data about justification performance:
                                 sumval_all_paragraphs += parag_cost;
                                 if(parag_cost > maxval_all_paragraphs ||
@@ -348,22 +356,20 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
 }
 
 static int justify_par(int i, int n, struct file_data* f,
-        struct paragraph_data* p, int* space_mem, 
+        struct paragraph_data* p, 
         struct decoupage* phi_mem)
 {
         
         int debut = i;
-        int min;
+        long int min;
+        int32_t E_val = E(i, i, f, p);
+        bool par_holds_on_line = true;
         for(i = n; i >= debut; --i){
-                min = INT_MAX;
-                int k_max = i;
+                min = (long) HUGE_VAL;
                 int aux;
-
-                // Computes space memoization of the 1st word of the paragraph :
-                space_mem[i] = E(i, i, f, p);
-
+                
                 // We truncate words larger than M (and update meta-data).
-                if (space_mem[i] < 0){
+                if ((E_val = E(i, i, f, p)) < 0){
                         word_truncate_at_length(f->outformat, p->tab_words[i], f->M);
                         p->words_L[i] = f->M;
                         min = f->M;
@@ -371,32 +377,33 @@ static int justify_par(int i, int n, struct file_data* f,
                         continue;
                 }
 
-                // Computes space memoization for the rest of the paragraph :
-                while(++k_max <= n &&
-                                (space_mem[k_max] = 
-                                 space_mem[k_max - 1] - 
-                                 (p->words_L[k_max] + f->size_separator)) >=0 );
-
-                // The paragraphe holds on a line : No justification to do
-                if (k_max == n+1){
+                // Check if the current paragraph holds on a line.
+                // If the last one did not fit on a line, this one won't either.
+                if(par_holds_on_line)
+                        par_holds_on_line = paragraph_holds_on_a_line(i, n, f, p);
+                
+                // If the paragraphe holds on a line : No justification to do
+                if (par_holds_on_line){
                         min = 0;
                         phi_mem[i].cout = min;
                         continue;
                 }
 
                 // Computes the min penalty value (between all possible cuts)
-                int k;
-                for(k = i; k < k_max; ++k){
+                int k = i;
+                do{ 
                         // Computes the penality val for this cut (i to k)
-                        aux = phi_mem[k+1].cout + penality(space_mem[k], f->N); 
+                        aux = phi_mem[k+1].cout + penality(E_val, f->N); 
 
                         // Updates the current min penality (if necessary)
                         if (aux < min) {
                                 min = aux;
-                                phi_mem[i].cout = min;
                                 phi_mem[i].coupe = k+1;
                         }
-                } 
+                } while(k < n && 
+                        (E_val -= (p->words_L[++k] + f->size_separator)) >= 0);
+                // Memoization of the min
+                phi_mem[i].cout = min;
         }
         return min;
 }
@@ -416,6 +423,20 @@ static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p)
                 words_n_spaces_length += p->words_L[j] + f->size_separator;
         }
         return words_n_spaces_length;
+}
+
+static bool paragraph_holds_on_a_line(int i, int k, 
+        struct file_data* f, struct paragraph_data* p)
+{
+        // we test if it is necessary to add spaces
+        long length = p->words_L[i];
+        for (int j = i + 1; j <= k && (((signed)f->M - length) >= 0); ++j)
+                length += p->words_L[j] + f->size_separator;
+
+        if(((signed)f->M - length) >= 0)
+                return true;
+        
+        return false;
 }
 
 static void draw_wordparagraph(struct stream* outformat, struct paragraph_data* p, 
