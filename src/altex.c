@@ -24,11 +24,6 @@ struct decoupage {
         int coupe;
 }; 
 
-struct solution{
-        int pos;
-        struct solution* next;
-};
-
 struct file_data{
         unsigned long M;          // line size (in units)
         unsigned N;               // coeff such that penalty = #spaces^N 
