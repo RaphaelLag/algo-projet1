@@ -55,7 +55,7 @@
 Binôme 
 (NOM\textsubscript{1} Prénom\textsubscript{1} --
  NOM\textsubscript{2} Prénom\textsubscript{2})
-\,: \dotfill
+\,: Raphaël Laguerre, Alexandre Rupp
 
 \noindent\begin{enumerate}
 \item QCM: A quel découpage correspond le co\^ut $\phi(i)$ ? \\
@@ -99,40 +99,37 @@ Binôme
       \item Analyser asymptotiquement (notation $O$ ou $\Theta$):
          \begin{enumerate}
             \item le nombre d'opérations effectuées (travail) =  $0(init + phi + impression) = O((3t + n) + (t + \frac{n(n+1)}{2}) + (t)) = O(n^{2})$
-            \item la profondeur (temps parallèle minimal ou chemin critique) = $O(n^{2})$
+            \item la profondeur (temps parallèle minimal ou chemin critique) = $O(n^{2})$ (Calcul des Phi, chacun dépend des précédents).
          \end{enumerate}
       \item Analyser précisément en donnant un équivalent (donc  pas en notation $O$ ou $\Theta$):
          \begin{enumerate}
-          \item l'espace mémoire requis par votre programme= $O(2n + t + n)$
-           \item le nombre de défauts de localité (cache) =  $O(\frac{t}{B} + \frac{n}{B} + \frac{n(n+1)}{2B}) $\\
-            NB On considère un cache de taille totale $Z$ caractères avec une taille de bloc $B$ caractères;
-            on suppose que la taille $Z$  du cache est très inférieure à $t$, mais suffisante pour contenir un grand nombre de lignes consécutives du paragraphe découpé.
+          \item l'espace mémoire requis par votre programme= $O(2n + t + n)$ (Phi(coupure + cout), tableau de mots, tableau de sommes des tailles de mots) 
+           \item le nombre de défauts de localité (cache) =  $O(\frac{t}{B} + \frac{n}{B} + \frac{n(n+1)}{2B}) $ (tableau de mot, tableau de tailles, phi) \\
          \end{enumerate}
    \end{enumerate}
 
 \item Pour un fichier de longueur $s$ caractères  ($s \gg Z$) dont le plus long paragraphe contient $t$ caractères, donner:
    \begin{enumerate}
-      \item le nombre d'opérations effectuées (notation $O$ ou $\Theta$) =
-      \item la profondeur (temps parallèle minimal ou chemin critique) =
-      \item le nombre de défauts de cache =  
+      \item le nombre d'opérations effectuées (notation $O$ ou $\Theta$) = $0(s)$
+      \item la profondeur (temps parallèle minimal ou chemin critique) = $O(t)$ 
+      \item le nombre de défauts de cache =  $O(\frac{3s}{B}) = O(\frac{s}{B})$ (chargement du fichier + tableau de mots + tableau de somme des tailles de mots).
     \end{enumerate}
-
 
 \item Expérimenter  votre programme sur le fichier $F$={\tt ALaRechercheDuTempsPerdu.txt} en sortie texte (pas pdf).
 Mesurer sur 10 exécutions  le temps CPU et le nombre de défauts de localité et indiquer les valeurs
 moyennes,  minimales et  maximales 
 des 10 exécutions. \\
-Indiquer la machine (nom si Ensimag; processeur et fréquence sinon)\,: \dotfill \\
+Indiquer la machine (nom si Ensimag; processeur et fréquence sinon)\,: pcserveur \\
 \centerline{\begin{tabular}{|c||c|c|c|} 
    \hline
    Valeur mesurée  & $~~~~$ Minimum $~~~~$   & $~~~~$ Maximum$~~~~$         & $~~~~$ Moyenne  $~~~~$       \\
    \hline
    \hline
-   $C^\star(F)$ & & & \\
+   $C^\star(F)$ & 1268482 & 1268482 & 1268482 \\
    \hline
-   Temps CPU  & & & \\
+   Temps CPU & 0.79s & 0.919s & 0.8318s \\
    \hline
-   Défaut de localité  & & & \\
+   Défaut de localité  & 0.1\% & 0.1\% & 0.1\% \\
    \hline
 \end{tabular}}
 
@@ -140,14 +137,15 @@ Indiquer la machine (nom si Ensimag; processeur et fréquence sinon)\,: \dotfill 
 on accède les octets en déréférençant le pointeur, comme un tableau. Les octets du fichier sont chargés en mémoire par blocs (pages) et seulement lorsqu'ils sont accédés.
 En utilisant {\tt mmap} (et {\tt unmmap}), peut-on diminuer le nombre de défauts de localité?   
 \begin{tabular}{lll}
-       $\square$ A/  Oui $~~~~~$
+       $\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}$
+%       $\square$
+ A/  Oui $~~~~~$
      & $\square$ B/ Non, il reste le même $~~~~~$
      & $\square$ C/ Non, il augmente.
 \end{tabular} \\
-Si A ou B, indiquer le nombre de défauts de localité en fonction de $Z$ et $B$ =  \\
-\textbf{Justifier brièvement (3 lignes max)\,:} \dotfill \\
-$~$ \dotfill \\
-$~$ \dotfill 
+Si A ou B, indiquer le nombre de défauts de localité en fonction de $Z$ et $B$ =  $O(\frac{2s}{B})$ (comme avant - défauts de cache liés au tableau de mot)\\
+\textbf{Justifier brièvement (3 lignes max)\,:} \\
+Lorsqu'on utilise mmap, ce dernier nous fournit un pointeur permettant d'accéder directement aux données du fichier. On s'épargne donc les défauts de cache obtenus lors de la recopie du contenu du fichier vers un tableau. Lorsqu'on a besoin d'un mot, on accède dirèctement à la zone couplée.
 \item 
 En UTF8, la césure douce est représentée par le caractère SHY ({\em Soft Hyphen}) de  code hexadécimal {\tt0xAD},
 affiché par le signe '-';
@@ -167,18 +165,14 @@ expliquer clairement et brièvement comment vous adapteriez votre programme pour 
 $T'(f)$ du nouveau programme étendu pour les césures vérifie\,:
 $T'(f) = O(1) \cdot T(f).$ \\
 \textbf{Réponse (10 lignes max)\,:} 
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill \\
-$~$\dotfill 
+Les mots contenant une césure douce sont stockés dans le tableau de mot comme si il n'en contenaient pas. \\
+À coté du tableau de mot on conserve un tableau d'integer de taille \textless nombre de mots du paragraphe\textgreater $~$ qui conserve pour chaque mot la position de la coupure, ou -1 si le mot n'est pas coupé. \\
+On utilise également un tableau de booleens de taille \textless nombre de mots du paragraphe\textgreater $~$ qui stocke si le mot a effectivement été coupé ou non. \\
+Dans la fonction Phi (``justify$_$par'' dans notre code), on prend la décision de couper oun non le mot, et on met à jour le tableau de booleens en conséquence.\\
+On doit également mettre \`a jour la fonction ``L'' qui donne la somme des tailles des mots car la taille est différente si il y a coupure de mot. Dans L on regardera simplement si le dernier mot de la ligne doit être coupé ou non, si oui la taille est plus grande de 1). \\
+Lors du draw$_$paragraphe, \`a l'endroit de la coupure (= fin de ligne), on vérifie si le dernier mot de la ligne doit être coupé ou non (tableau de boolen), si il doit l'être, on rajoute un ``hyphen'' à l'endroit de la coupure (cf tableau de position des coupures).
 \end{enumerate} 
-
+\\
 \end{document} 
 
 
