@@ -98,13 +98,13 @@ Binôme
    \begin{enumerate}
       \item Analyser asymptotiquement (notation $O$ ou $\Theta$):
          \begin{enumerate}
-            \item le nombre d'opérations effectuées (travail) = 
-            \item la profondeur (temps parallèle minimal ou chemin critique) = 
+            \item le nombre d'opérations effectuées (travail) =  $0(init + phi + impression) = O((3t + n) + (t + \frac{n(n+1)}{2}) + (t)) = O(n^{2})$
+            \item la profondeur (temps parallèle minimal ou chemin critique) = $O(n^{2})$
          \end{enumerate}
       \item Analyser précisément en donnant un équivalent (donc  pas en notation $O$ ou $\Theta$):
          \begin{enumerate}
-          \item l'espace mémoire requis par votre programme= 
-           \item le nombre de défauts de localité (cache) =  \\
+          \item l'espace mémoire requis par votre programme= $O(2n + t + n)$
+           \item le nombre de défauts de localité (cache) =  $O(\frac{t}{B} + \frac{n}{B} + \frac{n(n+1)}{2B}) $\\
             NB On considère un cache de taille totale $Z$ caractères avec une taille de bloc $B$ caractères;
             on suppose que la taille $Z$  du cache est très inférieure à $t$, mais suffisante pour contenir un grand nombre de lignes consécutives du paragraphe découpé.
          \end{enumerate}
