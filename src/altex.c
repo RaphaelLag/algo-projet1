@@ -36,8 +36,8 @@ struct file_data{
 
 struct paragraph_data{
         char** tab_words;         // array containing the paragraph's words.
-        size_t* words_L;          /* Array containing the size of each words
-                                   * in the paragraphe.
+        size_t* L;                /* Array containing the sum of words' sizes 
+                                   * from 0 to id_word.
                                    */
 };
 
@@ -94,17 +94,7 @@ static int E(int i, int k, struct file_data* f, struct paragraph_data* p);
  * @param p contains meta-data about the paragraph (see paragraph_data)
  * @return the size (in units) of the words between the indexes i and n 
  */
-static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p);
-
-/**
- * @param i is the index of the first word of the paragraph
- * @param k is the index of the last word of the paragraph
- * @param f contains meta-data about the file (see file_data for more details)
- * @param p contains meta-data about the paragraph (see paragraph_data)
- * @return true if the pargraph given as parameter holds on a line, else false.
- */
-static bool paragraph_holds_on_a_line(int i, int k, struct file_data* f, 
-        struct paragraph_data* p);
+static int L(int i, int k, struct file_data* f, struct paragraph_data* p);
 
 /**
  * This functions prints the paragraph justified.
@@ -284,11 +274,10 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
         while (!endofile) { 
                 // Variables used to memorize a paragraph :
                 char** tab_words = (char** ) s_calloc(len, sizeof(char*));
-                int nbwords = 0;
-                unsigned long par_len = 0;
+                int nb_words = 0;
                 // Init of structures stocking meta-data about file and parag
-                size_t* words_L = (size_t*) s_malloc(len * sizeof(size_t));
-                struct paragraph_data p_data = {tab_words, words_L};
+                size_t* sum_lengths = (size_t*) s_malloc(len * sizeof(size_t));
+                struct paragraph_data p_data = {tab_words, sum_lengths};
                 
                 // Reads the paragraph & init meta-data
                 int is_paragraph_end = 0 ;
@@ -301,37 +290,41 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                 endofile = 1 ;
                                 break ; 
                         } else {
-                                // We memoize the word_length value.
-                                words_L[nbwords] = wordlength(outformat, buffer); 	       
-                                // Update of paragraph length with word's size.
-                                par_len += words_L[nbwords];
+                                int word_L = wordlength(outformat, buffer); 
                                 // We add the word to the array. 
-                                tab_words[nbwords] = (char*) s_calloc(n+1, sizeof(char));
-                                memcpy(tab_words[nbwords], buffer, strlen(buffer) + 1);
-                                nbwords++;
+                                tab_words[nb_words] = (char*) s_calloc(n+1, sizeof(char));
+                                memcpy(tab_words[nb_words], buffer, strlen(buffer) + 1);
+                                // We truncate words larger than M (and update meta-data).
+                                if (word_L > (signed)M)
+                                        word_truncate_at_length(outformat, 
+                                                tab_words[nb_words], M);
+                                // Memoizes sum of words' lengths from 0 to nb_words .
+                                if(nb_words == 0)
+                                        sum_lengths[nb_words] = word_L;
+                                else
+                                        sum_lengths[nb_words] = 
+                                                sum_lengths[nb_words - 1] +                                                
+                                                f_data.size_separator + word_L;
+
+                                nb_words++;
                         }
                 }
-                if (nbwords > 0) {
+                if (nb_words > 0) {
                         // memoization of phi
-                        struct decoupage phi_mem [nbwords];
+                        struct decoupage phi_mem [nb_words];
                         
                         // Init of the memoization array with the default val -1
                         int i;
-                        for (i = 0; i < nbwords; i++) {
-                                phi_mem[i].cout = -1;
+                        for (i = 0; i < nb_words; i++)
                                 phi_mem[i].coupe = -1;
-                        }
                         
-                        // Update of paragraph length with spaces' size
-                        par_len += f_data.size_separator * (nbwords - 1);
-                
                         // If the paragraph holds on a line, we just draw it
-                        if (par_len < M) {
-                                draw_wordline(outformat, nbwords, tab_words, 1);
+                        if (sum_lengths[nb_words - 1] < M) {
+                                draw_wordline(outformat, nb_words, tab_words, 1);
                         } else {
                                 // Else we compute the optimal jusitfication
                                 int32_t parag_cost =
-                                        justify_par(0, nbwords - 1, &f_data,
+                                        justify_par(0, nb_words - 1, &f_data,
                                         &p_data, phi_mem);
                                 // Uodate data about justification performance:
                                 sumval_all_paragraphs += parag_cost;
@@ -340,11 +333,9 @@ long altex(FILE* in, size_t len, struct stream *outformat, unsigned long M,
                                         maxval_all_paragraphs = parag_cost;
                                 // We draw the pargraph justified.
                                 draw_wordparagraph(outformat, &p_data,
-                                        phi_mem, nbwords);
+                                        phi_mem, nb_words);
                         }
-                        
-                        par_len = 0;
-                        nbwords = 0;
+                        nb_words = 0;
                 }
                 free_paragraph_data(&p_data);
         }
@@ -362,46 +353,29 @@ static int justify_par(int i, int n, struct file_data* f,
         
         int debut = i;
         long int min;
-        int32_t E_val = E(i, i, f, p);
-        bool par_holds_on_line = true;
         for(i = n; i >= debut; --i){
                 min = (long) HUGE_VAL;
                 int aux;
-                
-                // We truncate words larger than M (and update meta-data).
-                if ((E_val = E(i, i, f, p)) < 0){
-                        word_truncate_at_length(f->outformat, p->tab_words[i], f->M);
-                        p->words_L[i] = f->M;
-                        min = f->M;
-                        phi_mem[i].cout = min;
-                        continue;
-                }
 
-                // Check if the current paragraph holds on a line.
-                // If the last one did not fit on a line, this one won't either.
-                if(par_holds_on_line)
-                        par_holds_on_line = paragraph_holds_on_a_line(i, n, f, p);
-                
                 // If the paragraphe holds on a line : No justification to do
-                if (par_holds_on_line){
+                if (E(i, n, f, p) >= 0){ // >= 
                         min = 0;
-                        phi_mem[i].cout = min;
+                        phi_mem[i].cout = 0;
                         continue;
                 }
-
                 // Computes the min penalty value (between all possible cuts)
                 int k = i;
                 do{ 
                         // Computes the penality val for this cut (i to k)
-                        aux = phi_mem[k+1].cout + penality(E_val, f->N); 
+                        aux = phi_mem[k+1].cout + penality(E(i, k, f, p), f->N); 
 
                         // Updates the current min penality (if necessary)
                         if (aux < min) {
                                 min = aux;
                                 phi_mem[i].coupe = k+1;
                         }
-                } while(k < n && 
-                        (E_val -= (p->words_L[++k] + f->size_separator)) >= 0);
+                } while(k < n && E(i, ++k, f, p) >= 0);
+
                 // Memoization of the min
                 phi_mem[i].cout = min;
         }
@@ -410,33 +384,17 @@ static int justify_par(int i, int n, struct file_data* f,
 
 static int E(int i, int k, struct file_data* f, struct paragraph_data* p)
 {
-        return (f->M - Delta(i, k, f, p));
+        return ((signed)f->M - L(i, k, f, p));
 }
 
-static int Delta(int i, int k, struct file_data* f, struct paragraph_data* p)
+static int L(int i, int k, struct file_data* f, struct paragraph_data* p)
 {
-        // Counts the size of the first word:
-        int words_n_spaces_length = p->words_L[i];
-        int j;
-        // Adds the size of the other words + spaces (1 space/word)
-        for (j = i + 1; j <= k; j++) {
-                words_n_spaces_length += p->words_L[j] + f->size_separator;
-        }
-        return words_n_spaces_length;
-}
-
-static bool paragraph_holds_on_a_line(int i, int k, 
-        struct file_data* f, struct paragraph_data* p)
-{
-        // we test if it is necessary to add spaces
-        long length = p->words_L[i];
-        for (int j = i + 1; j <= k && (((signed)f->M - length) >= 0); ++j)
-                length += p->words_L[j] + f->size_separator;
-
-        if(((signed)f->M - length) >= 0)
-                return true;
-        
-        return false;
+        // Si l'indice de début = 0, On a déjà la taille de la ligne / du mot :
+        if(i == 0){
+                return p->L[k];
+        } else
+                // Sinon, c'est la taille totale - la taille de ce qui précède.
+                return p->L[k] - p->L[i - 1] - f->size_separator;
 }
 
 static void draw_wordparagraph(struct stream* outformat, struct paragraph_data* p, 
@@ -494,5 +452,5 @@ static void free_tab_words(char** tab)
 static void free_paragraph_data(struct paragraph_data* p)
 {
         free_tab_words(p->tab_words);
-        free(p->words_L);
+        free(p->L);
 };
